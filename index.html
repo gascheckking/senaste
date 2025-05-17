@@ -1739,13 +1739,63 @@ const shareBtn = document.querySelector('.invite-card .share-btn');
 
     // Configure WalletConnect connector - Using wagmi.connectors from the new CDN link (wagmi v1.x)
 
-const walletConnectConnector = typeof wagmi !== 'undefined' && typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
-    chains: [base], // Support Base chain
+let walletConnectConnector = null;
+
+function initializeWagmi() {
+  if (
+    typeof wagmi === 'undefined' ||
+    typeof wagmi.createClient !== 'function' ||
+    typeof viem === 'undefined' ||
+    typeof viem.createPublicClient !== 'function'
+  ) {
+    console.error("Required wagmi/viem objects not fully loaded. Cannot initialize.");
+    return;
+  }
+
+  walletConnectConnector = new wagmi.connectors.WalletConnectConnector({
+    chains: [base],
     options: {
-       projectId: WALLETCONNECT_PROJECT_ID,
-       showQrModal: true
+      projectId: WALLETCONNECT_PROJECT_ID,
+      showQrModal: true,
+    },
+  });
+
+  config = wagmi.createClient({
+    autoConnect: true,
+    connectors: [
+      walletConnectConnector,
+      new wagmi.connectors.InjectedConnector({ chains: [base] }),
+    ],
+    provider: ({ chainId }) =>
+      viem.createPublicClient({
+        chain: base,
+        transport: viem.http(),
+      }),
+  });
+
+  client = config;
+
+  config.subscribe((state) => {
+    console.log('Wagmi state changed:', state);
+    const isConnected = state.status === 'connected';
+    const currentAddress = state.data?.account;
+    const currentChainId = state.data?.chain?.id;
+    userAddress = currentAddress;
+
+    updateWalletUI(isConnected);
+
+    if (isConnected) {
+      loadOnchainData(userAddress);
+      if (currentChainId !== base.id) {
+        const t = translations[languageSelect.value] || translations['en'];
+        alert(`${t.switchNetworkAlert || 'Please switch to the Base network (Chain ID 8453). You are currently on Chain ID'} ${currentChainId}.`);
+      }
+    } else {
+      loadOnchainData(null);
     }
-}) : null;
+  });
+}
+
 
 // --- Wallet Connection Logic (using Wagmi) ---
 
@@ -3043,50 +3093,46 @@ function initializeWagmi() {
     }
 
 
-    // --- Wait for Wagmi and Viem to Load ---
-    // This function polls until wagmi and viem are available globally
-    // Added a timeout to prevent infinite loops
-    function waitForWagmiAndViem(callback, timeout = 20000) { // Increased timeout to 20 seconds
-        const startTime = Date.now();
-
-        function check() {
-            const wagmiLoaded = typeof wagmi !== 'undefined' && typeof wagmi.createClient === 'function';
-            const viemLoaded = typeof viem !== 'undefined' && typeof viem.createPublicClient === 'function';
-
-            if (wagmiLoaded && viemLoaded) {
-                console.log("✅ wagmi and viem loaded successfully.");
-                callback();
-            } else if (Date.now() - startTime > timeout) {
-                console.error("❌ Timeout waiting for wagmi and viem to load.");
-                if (!wagmiLoaded) console.error("   - wagmi not fully loaded.");
-                if (!viemLoaded) console.error("   - viem not fully loaded.");
-                // Add a specific message to the console if tab initialization fails due to timeout
-                 console.error("❌ Tab system initialization failed: Required libraries did not load within the timeout.");
-                // Optionally display an error message to the user
-                const t = translations[languageSelect.value] || translations['en'];
-                 alert("Failed to load necessary libraries. Please check your internet connection or try again later."); // Add translation later
-            }
-            else {
-                console.log("Waiting for wagmi and viem...");
-                setTimeout(check, 100); // Check again after 100ms
-            }
-        }
-        check();
-    }
-
-
-    // --- Start the app initialization after DOM is ready AND wagmi/viem are loaded ---
-    // Use DOMContentLoaded to ensure the HTML structure is ready
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM fully loaded and parsed.');
-        // Then wait for wagmi and viem before starting the rest of the app
-        waitForWagmiAndViem(startAppInitialization);
-    });
-
-  </script>
-<div style="text-align:center; margin: 20px 0;">
+    <div style="text-align:center; margin: 20px 0;">
   <button id="connectWallet">Connect Wallet</button>
   <button id="disconnectWallet" style="display: none;">Disconnect Wallet</button>
 </div>
+
+<script>
+  // --- Wait for Wagmi and Viem to Load ---
+  function waitForWagmiAndViem(callback, timeout = 20000) {
+    const startTime = Date.now();
+
+    function check() {
+      const wagmiLoaded = typeof wagmi !== 'undefined' && typeof wagmi.createClient === 'function';
+      const viemLoaded = typeof viem !== 'undefined' && typeof viem.createPublicClient === 'function';
+
+      if (wagmiLoaded && viemLoaded) {
+        console.log("✅ wagmi and viem loaded successfully.");
+        callback();
+      } else if (Date.now() - startTime > timeout) {
+        console.error("❌ Timeout waiting for wagmi and viem to load.");
+        if (!wagmiLoaded) console.error("   - wagmi not fully loaded.");
+        if (!viemLoaded) console.error("   - viem not fully loaded.");
+        console.error("❌ Tab system initialization failed: Required libraries did not load within the timeout.");
+        const t = translations[languageSelect.value] || translations['en'];
+        alert("Failed to load necessary libraries. Please check your internet connection or try again later.");
+      } else {
+        console.log("Waiting for wagmi and viem...");
+        setTimeout(check, 100);
+      }
+    }
+    check();
+  }
+
+  // --- Start the app initialization after DOM is ready AND wagmi/viem are loaded ---
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded and parsed.');
+    waitForWagmiAndViem(startAppInitialization);
+    initializeWagmi();
+  });
+</script>
 </body>
 </html>
+
+
