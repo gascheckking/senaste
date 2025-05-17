@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WarpAi - Onchain Activity Dashboard</title>
+  <script>
+    // Skydda mot att skriva om window.ethereum som är read-only
+    if (!window.ethereum) {
+      // Här kan du lägga fallback eller logik om ethereum inte finns
+      // Exempel: window.ethereum = ...  (men det går INTE om read-only)
+      // Så vanligtvis inget görs här för att undvika felet
+    }
+  </script>
 
-  <!-- Stylesheets -->
+  <!-- Resten av dina stylesheets och scripts -->
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
