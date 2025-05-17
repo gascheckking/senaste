@@ -1659,60 +1659,52 @@
 
   <script>
     // --- Global Variables ---
-// These will be updated with real data after WalletConnect and API integrations
-let provider; // Ethereum provider (e.g., Metamask, WalletConnect) - Note: With wagmi/viem, direct provider/signer might be less used
-let signer;   // Signer for transactions - Note: With wagmi/viem, transactions are handled differently
-let userAddress = null; // Store connected wallet address
+let provider = null; 
+let signer = null;
+let userAddress = null;
 
-// NOTE: Replace 'demo' with your actual default Owlracle API key if you have one, or leave as 'demo' for public tier.
-// The user can also enter their key in Settings, which overrides this.
-let owlracleApiKey = 'b9bee1f4421d4eebb170067dc3e2e579'; // API Key provided by user
+let owlracleApiKey = 'b9bee1f4421d4eebb170067dc3e2e579';
 
-// --- TODO: Replace with your actual WarpAI Token Contract Address on Base ---
-// This address is used for displaying the token balance.
-const WARPAI_TOKEN_CONTRACT_ADDRESS = "0xYourWarpAITokenContractAddressHere"; // Replace with your token address
+const WARPAI_TOKEN_CONTRACT_ADDRESS = "0xYourWarpAITokenContractAddressHere";
 
-// --- WalletConnect Project ID ---
-// Set your actual Project ID from walletconnect.com
 const WALLETCONNECT_PROJECT_ID = 'c0aa1ca206eb7d58226102b102ec49e9';
 
 // --- DOM Element References ---
+const connectWalletBtn = document.getElementById('connectWallet');
+const connectedWalletInfo = document.getElementById('connectedWalletInfo');
+const headerWalletAddressDisplay = document.getElementById('headerWalletAddress');
+const headerXPStreakDisplay = document.getElementById('headerXPStreak');
+const headerXPDisplay = document.getElementById('headerXP');
+const headerStreakDisplay = document.getElementById('headerStreak');
 
-    const connectWalletBtn = document.getElementById('connectWallet');
-    const connectedWalletInfo = document.getElementById('connectedWalletInfo'); // New div for connected state
-    const headerWalletAddressDisplay = document.getElementById('headerWalletAddress'); // Wallet address in header
-    const headerXPStreakDisplay = document.getElementById('headerXPStreak'); // XP and Streak in header
-    const headerXPDisplay = document.getElementById('headerXP'); // XP span in header
-    const headerStreakDisplay = document.getElementById('headerStreak'); // Streak span in header
+const xpDisplay = document.getElementById('xpDisplay');
+const settingsIconDisconnected = document.getElementById('settingsIconDisconnected');
+const settingsIconConnected = document.getElementById('settingsIconConnected');
 
-    const xpDisplay = document.getElementById('xpDisplay'); // Old XP in header (will hide)
-    const settingsIconDisconnected = document.getElementById('settingsIconDisconnected'); // Settings icon when disconnected
-    const settingsIconConnected = document.getElementById('settingsIconConnected'); // Settings icon when connected
+const gasProgress = document.getElementById('gasProgress');
+const gasValue = document.getElementById('gasValue');
+const warpPointsDisplay = document.getElementById('warpPoints');
+const rewardsWarpPointsDisplay = document.getElementById('rewardsWarpPoints');
+const buyWPBtn = document.getElementById('buyWP');
+const buyPremiumBtn = document.getElementById('buyPremium');
+const claimDailyBtn = document.getElementById('claimDaily');
+const myActivityListContainer = document.getElementById('myActivityList');
+const favoritesActivityListContainer = document.getElementById('favoritesActivityList');
+const favoritesListContainer = document.querySelector('.favorites-list');
+const addFavoriteBtn = document.getElementById('addFavoriteBtn');
+const newFavoriteAddressInput = document.getElementById('newFavoriteAddress');
+const settingsSection = document.getElementById('settings');
+const languageSelect = document.getElementById('languageSelect');
+const themeToggle = document.getElementById('themeToggle');
+const owlracleApiKeyInput = document.getElementById('owlracleApiKeyInput');
+const profileWalletAddressDisplay = document.getElementById('profileWalletAddress');
+const profileWarpPointsDisplay = document.getElementById('profileWarpPoints');
+const profileXPDisplay = document.getElementById('profileXP');
+const premiumStatusDisplay = document.getElementById('premiumStatus');
+const leaderboardListContainer = document.querySelector('.leaderboard-list');
+const profileImagePlaceholder = document.querySelector('.profile-image-placeholder');
+const shareBtn = document.querySelector('.invite-card .share-btn');
 
-
-    const gasProgress = document.getElementById('gasProgress'); // Gas meter progress bar
-    const gasValue = document.getElementById('gasValue'); // Gas value text
-    const warpPointsDisplay = document.getElementById('warpPoints'); // WP in Overview card
-    const rewardsWarpPointsDisplay = document.getElementById('rewardsWarpPoints'); // WP in Rewards card
-    const buyWPBtn = document.getElementById('buyWP'); // Buy WP button
-    const buyPremiumBtn = document.getElementById('buyPremium'); // Buy Premium button
-    const claimDailyBtn = document.getElementById('claimDaily'); // Claim Daily button
-    const myActivityListContainer = document.getElementById('myActivityList'); // Container for user's activity feed items
-    const favoritesActivityListContainer = document.getElementById('favoritesActivityList'); // Container for favorites activity feed items
-    const favoritesListContainer = document.querySelector('.favorites-list'); // Container for saved addresses in Profile
-    const addFavoriteBtn = document.getElementById('addFavoriteBtn'); // Button to add saved address
-    const newFavoriteAddressInput = document.getElementById('newFavoriteAddress'); // Input for new saved address
-    const settingsSection = document.getElementById('settings'); // Settings content section
-    const languageSelect = document.getElementById('languageSelect'); // Language select dropdown
-    const themeToggle = document.getElementById('themeToggle'); // Theme toggle select dropdown
-    const owlracleApiKeyInput = document.getElementById('owlracleApiKeyInput'); // Owlracle API key input
-    const profileWalletAddressDisplay = document.getElementById('profileWalletAddress'); // Wallet address in Profile section
-    const profileWarpPointsDisplay = document.getElementById('profileWarpPoints'); // WP in Profile section
-    const profileXPDisplay = document.getElementById('profileXP'); // XP in Profile section
-    const premiumStatusDisplay = document.getElementById('premiumStatus'); // Premium status in Profile section
-    const leaderboardListContainer = document.querySelector('.leaderboard-list'); // Container for leaderboard items
-    const profileImagePlaceholder = document.querySelector('.profile-image-placeholder'); // Profile image placeholder
-     const shareBtn = document.querySelector('.invite-card .share-btn'); // Share button
 
 
     // Declare wagmi config and client globally
