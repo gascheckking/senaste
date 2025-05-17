@@ -1797,25 +1797,21 @@ async function connectWallet() {
 
     // --- Disconnect Wallet (using Wagmi) ---
     async function disconnectWallet() {
-        console.log('Disconnecting wallet with Wagmi...');
-        // Ensure wagmi config is created before disconnecting
-         if (!config) {
-             console.error("Wagmi config not initialized.");
-             return;
-         }
-        try {
-            // Use wagmi's disconnect function
-            await config.disconnect();
-            console.log('Wallet disconnected.');
-            // updateWalletUI(false); // Wagmi subscription will handle UI update
-            // Clear displayed onchain data
-            loadOnchainData(null);
-        } catch (error) {
-            console.error('Wallet Disconnection Error:', error);
-            const t = translations[languageSelect.value] || translations['en'];
-            alert('Something went wrong during wallet disconnection: ' + error.message);
-        }
-    }
+  if (!config) {
+    console.error("Wagmi config not initialized.");
+    return;
+  }
+
+  try {
+    await config.disconnect();
+    console.log("🔌 Wallet disconnected.");
+    loadOnchainData(null); // Clear on disconnect
+  } catch (error) {
+    console.error("Wallet Disconnection Error:", error);
+    const t = translations[languageSelect.value] || translations['en'];
+    alert("Something went wrong during wallet disconnection: " + error.message);
+  }
+}
 
      // --- Initialize Wagmi ---
 function initializeWagmi() {
