@@ -4,13 +4,12 @@
   <script>
     // Skydda mot att skriva om window.ethereum som är read-only
     if (!window.ethereum) {
-      // Här kan du lägga fallback eller logik om ethereum inte finns
-      // Exempel: window.ethereum = ...  (men det går INTE om read-only)
-      // Så vanligtvis inget görs här för att undvika felet
+      // Ethereum-objekt saknas, här kan fallback-logik läggas om du vill
+      // Men skriv aldrig till window.ethereum då det är read-only
     }
   </script>
 
-  <!-- Resten av dina stylesheets och scripts -->
+  <!-- Stylesheets -->
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -39,9 +38,9 @@
   ></script>
 </head>
 
+<style>
+  /* --- Color Variables (Dark and Light Mode) --- */
 
-  <style>
-    /* --- Color Variables (Dark and Light Mode) --- */
     :root {
       --primary: #00ff88; /* Neon Green */
       --secondary: #00a3ff; /* Neon Blue */
