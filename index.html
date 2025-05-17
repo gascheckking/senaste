@@ -1751,18 +1751,18 @@
 
 
     // Configure WalletConnect connector - Using wagmi.connectors from the new CDN link (wagmi v1.x)
-    // Check if wagmi is defined before using it
-    const walletConnectConnector = typeof wagmi !== 'undefined' && typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
-        chains: [base], // Support Base chain
-        options: {
-           projectId: WALLETCONNECT_PROJECT_ID, // Your WalletConnect Project ID
-           showQrModal: true, // Show the QR modal
-           // Note: WalletConnectModal is used directly for theme setting elsewhere
-        }
-    }) : null; // Set to null if wagmi or wagmi.connectors is not defined
+const WALLETCONNECT_PROJECT_ID = 'c0aa1ca206eb7d58226102b102ec49e9';
 
+const walletConnectConnector = typeof wagmi !== 'undefined' && typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
+    chains: [base], // Support Base chain
+    options: {
+       projectId: WALLETCONNECT_PROJECT_ID,
+       showQrModal: true
+    }
+}) : null;
 
-    // --- Wallet Connection Logic (using Wagmi) ---
+// --- Wallet Connection Logic (using Wagmi) ---
+
     // --- Wallet Connection Logic (using Wagmi) ---
 async function connectWallet() {
   if (WALLETCONNECT_PROJECT_ID === 'YOUR_WALLETCONNECT_PROJECT_ID') {
