@@ -1738,7 +1738,6 @@ const shareBtn = document.querySelector('.invite-card .share-btn');
 
 
     // Configure WalletConnect connector - Using wagmi.connectors from the new CDN link (wagmi v1.x)
-const WALLETCONNECT_PROJECT_ID = 'c0aa1ca206eb7d58226102b102ec49e9';
 
 const walletConnectConnector = typeof wagmi !== 'undefined' && typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
     chains: [base], // Support Base chain
