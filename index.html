@@ -1791,28 +1791,27 @@ function initializeWagmi() {
       }),
   });
 
-  client = config;
+ client = config;
 
-  config.subscribe((state) => {
-    console.log('Wagmi state changed:', state);
-    const isConnected = state.status === 'connected';
-    const currentAddress = state.data?.account;
-    const currentChainId = state.data?.chain?.id;
-    userAddress = currentAddress;
+config.subscribe((state) => {
+  console.log('Wagmi state changed:', state);
+  const isConnected = state.status === 'connected';
+  const currentAddress = state.data?.account;
+  const currentChainId = state.data?.chain?.id;
+  userAddress = currentAddress;
 
-    updateWalletUI(isConnected);
+  updateWalletUI(isConnected);
 
-    if (isConnected) {
-      loadOnchainData(userAddress);
-      if (currentChainId !== base.id) {
-        const t = translations[languageSelect.value] || translations['en'];
-        alert(`${t.switchNetworkAlert || 'Please switch to the Base network (Chain ID 8453). You are currently on Chain ID'} ${currentChainId}.`);
-      }
-    } else {
-      loadOnchainData(null);
+  if (isConnected) {
+    loadOnchainData(userAddress);
+    if (currentChainId !== base.id) {
+      const t = translations[languageSelect.value] || translations['en'];
+      alert(`${t.switchNetworkAlert || 'Please switch to the Base network (Chain ID 8453). You are currently on Chain ID'} ${currentChainId}.`);
     }
-  });
-}
+  } else {
+    loadOnchainData(null);
+  }
+});
 
 async function connectWallet() {
   if (WALLETCONNECT_PROJECT_ID === 'YOUR_WALLETCONNECT_PROJECT_ID') {
@@ -1862,55 +1861,56 @@ async function disconnectWallet() {
   }
 }
 
-
-  const base = wagmi.chains?.base ?? {
-    id: 8453,
-    name: 'Base',
-    network: 'base',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: ['https://mainnet.base.org'] }, public: { http: ['https://mainnet.base.org'] } },
-    blockExplorers: { default: { name: 'Basescan', url: 'https://basescan.org' } },
-    contracts: {
-      multicall3: {
-        address: '0xcA11bde05977b3631167028862bE2a173976CA11',
-        blockCreated: 8440150,
-      },
+const base = wagmi.chains?.base ?? {
+  id: 8453,
+  name: 'Base',
+  network: 'base',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: { default: { http: ['https://mainnet.base.org'] }, public: { http: ['https://mainnet.base.org'] } },
+  blockExplorers: { default: { name: 'Basescan', url: 'https://basescan.org' } },
+  contracts: {
+    multicall3: {
+      address: '0xcA11bde05977b3631167028862bE2a173976CA11',
+      blockCreated: 8440150,
     },
-  };
+  },
+};
 
-  const walletConnectConnector = typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
-    chains: [base],
-    options: {
-      projectId: WALLETCONNECT_PROJECT_ID,
-      showQrModal: true,
-    },
-  }) : null;
+const walletConnectConnector = typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
+  chains: [base],
+  options: {
+    projectId: WALLETCONNECT_PROJECT_ID,
+    showQrModal: true,
+  },
+}) : null;
 
-  config = wagmi.createClient({
-    autoConnect: true,
-    connectors: [
-      walletConnectConnector,
-      typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.InjectedConnector({ chains: [base] }) : null,
-    ].filter(Boolean),
-    provider: ({ chainId }) =>
-      viem.createPublicClient({
-        chain: base,
-        transport: viem.http(),
-      }),
-  });
+config = wagmi.createClient({
+  autoConnect: true,
+  connectors: [
+    walletConnectConnector,
+    typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.InjectedConnector({ chains: [base] }) : null,
+  ].filter(Boolean),
+  provider: ({ chainId }) =>
+    viem.createPublicClient({
+      chain: base,
+      transport: viem.http(),
+    }),
+});
 
-  if (!config) {
-    console.error("Failed to create wagmi config.");
-    return;
-  }
+if (!config) {
+  console.error("Failed to create wagmi config.");
+  return;
+}
 
-  client = config;
+client = config;
 
-  config.subscribe((state) => {
+config.subscribe(
+  (state) => {
     console.log('Wagmi state changed:', state);
     const isConnected = state.status === 'connected';
     const currentAddress = state.data?.account;
     const currentChainId = state.data?.chain?.id;
+
     userAddress = currentAddress;
 
     updateWalletUI(isConnected);
@@ -1924,81 +1924,13 @@ async function disconnectWallet() {
     } else {
       loadOnchainData(null);
     }
-  });
-}
+  },
+  {
+    // Optional: filter state changes if needed
+    // selector: (state) => ({ status: state.status, addresses: state.addresses, chainId: state.chainId }),
+  }
+);
 
-
-
-         // Use wagmi.createClient from the new CDN link (wagmi v1.x)
-         config = wagmi.createClient({
-             autoConnect: true, // Attempt to auto-connect previous session
-             connectors: [
-                 // Use the walletConnectConnector created using wagmi.connectors
-                 walletConnectConnector,
-                 // --- TODO: Add other connectors like InjectedConnector (for Metamask browser extension) ---
-                 // Example using wagmi.connectors:
-                 typeof wagmi !== 'undefined' && typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.InjectedConnector({ chains: [base] }) : null,
-             ].filter(connector => connector !== null), // Filter out null connectors if any failed to initialize
-             provider: ({ chainId }) => viem.createPublicClient({ // Use viem to create a public client
-                 chain: base, // Use the base object from wagmi.chains
-                 transport: viem.http() // Use HTTP transport from viem
-             }),
-             // Note: Wagmi v1.x uses `provider` function, not `publicClient` directly in createClient
-             // --- TODO: Add wallet client if needed for signing/sending transactions ---
-             // walletClient: viem.createWalletClient({ ... })
-         });
-
-         // Check if config was successfully created
-         if (!config) {
-             console.error("Failed to create wagmi config.");
-             return;
-         }
-
-         // Wagmi v1.x client is the config object itself
-         client = config;
-
-         // Subscribe to wagmi state changes here, AFTER config is created
-         // Use config.subscribe directly as per wagmi v1 documentation
-         config.subscribe(
-           (state) => {
-             console.log('Wagmi state changed:', state);
-             const isConnected = state.status === 'connected';
-             const currentAddress = state.data?.account; // Access account from data object in v1.x
-             const currentChainId = state.data?.chain?.id; // Access chain id from data object in v1.x
-
-             // Update global state
-             userAddress = currentAddress;
-             // --- TODO: Get signer from wagmi/viem if needed for transactions ---
-             // signer = ... ; // You would typically get a signer or wallet client from wagmi/viem config
-
-             // Update UI based on connection status
-             updateWalletUI(isConnected);
-
-             // Load data if connected or clear data if disconnected
-             if (isConnected) {
-                 loadOnchainData(userAddress);
-                  // --- TODO: Check if currentChainId is Base (8453) and alert user if not ---
-                  if (currentChainId !== base.id) {
-                       const t = translations[languageSelect.value] || translations['en'];
-                       alert(`${t.switchNetworkAlert || 'Please switch to the Base network (Chain ID 8453). You are currently on Chain ID'} ${currentChainId}.`);
-                       // --- TODO: Optionally prompt user to switch network using wagmi's switchNetwork ---
-                       // Example: config.switchNetwork({ chainId: base.id }); // Check wagmi for switchNetwork function
-                  }
-             } else {
-                 loadOnchainData(null); // Clear data when disconnected
-             }
-           },
-           {
-             // Optional: filter state changes if needed
-             // selector: (state) => ({ status: state.status, addresses: state.addresses, chainId: state.chainId }), // Adjust selector for v1.x state structure
-           }
-         );
-
-         // Attempt to auto-connect immediately after initialization
-         // This is handled by wagmi.createClient({ autoConnect: true })
-         // but we can also explicitly call config.autoConnect() if needed, though subscribe is usually enough.
-         // config.autoConnect(); // Explicitly attempt auto-connect
-     }
 
 
     // --- Update Wallet UI (Connect button vs Connected Info) ---
