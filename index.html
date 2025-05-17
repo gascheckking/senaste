@@ -3063,10 +3063,9 @@ config.subscribe(
 
   // --- Start the app initialization after DOM is ready AND wagmi/viem are loaded ---
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded and parsed.');
-    waitForWagmiAndViem(startAppInitialization);
-    initializeWagmi();
-  });
+  console.log('DOM fully loaded and parsed.');
+  waitForWagmiAndViem(startAppInitialization); // ⬅️ Den här räcker
+});
 </script>
 </body>
 </html>
