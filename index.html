@@ -1659,30 +1659,25 @@
 
   <script>
     // --- Global Variables ---
-    // These will be updated with real data after WalletConnect and API integrations
-    let provider; // Ethereum provider (e.g., Metamask, WalletConnect) - Note: With wagmi/viem, direct provider/signer might be less used
-    let signer;   // Signer for transactions - Note: With wagmi/viem, transactions are handled differently
-    let userAddress = null; // Store connected wallet address
-    // NOTE: Replace 'demo' with your actual default Owlracle API key if you have one, or leave as 'demo' for public tier.
-    // The user can also enter their key in Settings, which overrides this.
-    let owlracleApiKey = 'b9bee1f4421d4eebb170067dc3e2e579'; // API Key provided by user
+// These will be updated with real data after WalletConnect and API integrations
+let provider; // Ethereum provider (e.g., Metamask, WalletConnect) - Note: With wagmi/viem, direct provider/signer might be less used
+let signer;   // Signer for transactions - Note: With wagmi/viem, transactions are handled differently
+let userAddress = null; // Store connected wallet address
 
-    // --- TODO: Replace with your actual WarpAI Token Contract Address on Base ---
-    // This address is used for displaying the token balance.
-    const WARPAI_TOKEN_CONTRACT_ADDRESS = "0xYourWarpAITokenContractAddressHere"; // Replace with your token address
+// NOTE: Replace 'demo' with your actual default Owlracle API key if you have one, or leave as 'demo' for public tier.
+// The user can also enter their key in Settings, which overrides this.
+let owlracleApiKey = 'b9bee1f4421d4eebb170067dc3e2e579'; // API Key provided by user
 
-    // --- WalletConnect Project ID ---
-    // You need to get a Project ID from WalletConnect Cloud (walletconnect.com)
-    // Replace 'YOUR_WALLETCONNECT_PROJECT_ID' with your actual Project ID
-    // Get your Project ID here: https://cloud.walletconnect.com/
-    const WALLETCONNECT_PROJECT_ID = 'c0aa1ca206eb7d58226102b102ec49e9';
-    if (WALLETCONNECT_PROJECT_ID === 'YOUR_WALLETCONNECT_PROJECT_ID') {
-        console.warn("Please replace 'YOUR_WALLETCONNECT_PROJECT_ID' with your actual Project ID from walletconnect.com");
-        // You might want to disable the connect button or show a warning in the UI
-    }
+// --- TODO: Replace with your actual WarpAI Token Contract Address on Base ---
+// This address is used for displaying the token balance.
+const WARPAI_TOKEN_CONTRACT_ADDRESS = "0xYourWarpAITokenContractAddressHere"; // Replace with your token address
 
+// --- WalletConnect Project ID ---
+// Set your actual Project ID from walletconnect.com
+const WALLETCONNECT_PROJECT_ID = 'c0aa1ca206eb7d58226102b102ec49e9';
 
-    // --- DOM Element References ---
+// --- DOM Element References ---
+
     const connectWalletBtn = document.getElementById('connectWallet');
     const connectedWalletInfo = document.getElementById('connectedWalletInfo'); // New div for connected state
     const headerWalletAddressDisplay = document.getElementById('headerWalletAddress'); // Wallet address in header
