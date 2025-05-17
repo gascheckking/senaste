@@ -1,0 +1,3040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WarpAi - Onchain Activity Dashboard</title>
+  <script src="https://cdn.ethers.js/lib/ethers-5.7.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/viem@1.14.2/dist/viem.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/wagmi@1.3.6/dist/wagmi.umd.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js"></script>
+
+
+  <style>
+    /* --- Color Variables (Dark and Light Mode) --- */
+    :root {
+      --primary: #00ff88; /* Neon Green */
+      --secondary: #00a3ff; /* Neon Blue */
+      --bg: #0f0f0f; /* Dark background */
+      --card-bg: #1a1a1a; /* Darker card background */
+      --text: #ffffff; /* White text */
+      --error: #ff465c; /* Red for errors/warnings */
+      --low-gas: #00ff88; /* Green for low gas */
+      --medium-gas: #ffc300; /* Yellow for medium gas */
+      --high-gas: #ff465c; /* Red for high gas */
+      --border: #2d2d2d; /* Default border color */
+      --header-line: 1px solid #666; /* Solid line for header */
+      --dashed-border: 1px dashed #666; /* Dashed border for other elements */
+
+      /* Light Mode Colors */
+      --light-bg: #f0f0f0;
+      --light-card-bg: #ffffff;
+      --light-text: #1a1a1a;
+      --light-border: #d0d0d0;
+      --light-low-gas: #10b981; /* Tailwind green-600 */
+      --light-medium-gas: #f59e0b; /* Tailwind yellow-500 */
+      --light-high-gas: #ef4444; /* Tailwind red-500 */
+      --light-primary: #059669; /* Tailwind emerald-600 */
+      --light-secondary: #2563eb; /* Tailwind blue-600 */
+      --light-error: #dc2626; /* Tailwind red-700 */
+       --light-header-line: 1px solid #999; /* Lighter solid line */
+       --light-dashed-border: 1px dashed #999; /* Lighter dashed border */
+    }
+
+    /* Apply light mode variables when data-theme="light" */
+    [data-theme="light"] {
+        --bg: var(--light-bg);
+        --card-bg: var(--light-card-bg);
+        --text: var(--light-text);
+        --border: var(--light-border);
+        --low-gas: var(--light-low-gas);
+        --medium-gas: var(--light-medium-gas);
+        --high-gas: var(--light-high-gas);
+        --primary: var(--light-primary);
+        --secondary: var(--light-secondary);
+        --error: var(--light-error);
+        --header-line: var(--light-header-line); /* Use light solid line */
+        --dashed-border: var(--light-dashed-border); /* Use light dashed border */
+
+        /* Adjust specific elements for light mode */
+        .app-header, .footer-nav {
+            border-color: var(--light-border);
+            background: var(--light-card-bg); /* Use card background for header/footer in light mode */
+        }
+         .connect-btn {
+             border-color: var(--primary);
+             color: var(--primary);
+             background: rgba(5, 150, 105, 0.1); /* Light primary with alpha */
+         }
+          .connect-btn:hover {
+              background: var(--primary);
+              color: var(--light-text); /* Text should be dark in light mode */
+          }
+         .xp-badge {
+             background: var(--light-bg); /* Use lighter background for badge */
+             color: var(--light-text);
+         }
+         .tab.active {
+             border-bottom-color: var(--primary);
+         }
+         .footer-nav button.active {
+             color: var(--primary);
+         }
+         .logo {
+             background: linear-gradient(45deg, var(--primary), var(--secondary));
+             -webkit-background-clip: text;
+             -webkit-text-fill-color: transparent;
+         }
+          .settings-icon:hover {
+              color: var(--primary);
+          }
+          .points-display button {
+              border-color: var(--secondary);
+              color: var(--secondary);
+              background: rgba(37, 99, 235, 0.1); /* Light secondary with alpha */
+          }
+           .points-display button:hover {
+               background: var(--secondary);
+               color: var(--light-text); /* Text should be dark */
+           }
+          .claim-btn, .share-btn {
+              background: linear-gradient(45deg, var(--primary), var(--secondary));
+              color: var(--light-text); /* Text should be dark */
+          }
+          .add-address-form input, .settings-option select, .settings-option input[type="text"] {
+              border-color: var(--light-border);
+              background: var(--light-bg);
+              color: var(--light-text);
+          }
+           .add-address-form button {
+               background: var(--secondary);
+               color: var(--light-text); /* Text should be dark */
+           }
+           .invite-card .invite-code {
+               background: var(--light-bg);
+               border-color: var(--light-border);
+               color: var(--light-text);
+           }
+           .profile-info strong {
+               color: var(--primary);
+           }
+            .earning.positive {
+                color: var(--primary);
+            }
+             .earning.negative {
+                 color: var(--error);
+             }
+              .feed-content strong {
+                  color: var(--primary);
+              }
+               .favorite-item button {
+                   color: var(--error);
+               }
+    }
+
+
+    /* --- Base Styles --- */
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh; /* Ensure body fills viewport height */
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 60px; /* Add bottom padding to make space for footer */
+      overflow-y: auto; /* Allow scrolling on body */
+      transition: background 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+       -webkit-font-smoothing: antialiased; /* Improve font rendering */
+       -moz-osx-font-smoothing: grayscale; /* Improve font rendering */
+    }
+
+    /* --- Header --- */
+    .app-header {
+      padding: 0.5rem 0.8rem; /* Further reduced padding */
+      border-bottom: 1px solid var(--border);
+      width: 100%; /* Ensure header takes full width */
+      position: sticky; /* Make header sticky */
+      top: 0; /* Pin header to the top */
+      background: var(--bg); /* Add background for scrolling */
+      z-index: 10; /* Ensure header is above other content */
+      transition: background 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */
+    }
+
+    .header-content {
+      max-width: 1200px; /* Max width for larger screens */
+      margin: 0 auto; /* Center content */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-direction: row; /* Keep elements in a row by default */
+      gap: 0.6rem; /* Reduced gap */
+    }
+
+     /* Stack header elements on very small screens */
+    @media (max-width: 400px) {
+        .header-content {
+             flex-direction: column;
+             gap: 0.4rem; /* Reduced gap */
+        }
+         /* Adjust network structure on small screens */
+        .logo-network {
+             align-items: center; /* Center the network structure */
+             text-align: center;
+        }
+         .network-line-v {
+            left: 50%; /* Center vertical line */
+            transform: translateX(-50%);
+         }
+          .network-line-h {
+             width: 50%; /* Adjust horizontal line width */
+             left: 50%;
+             transform: translateX(-50%);
+          }
+          .header-title {
+              text-align: center; /* Center title below network */
+              margin-left: 0;
+              margin-top: 0.2rem; /* Reduced margin */
+          }
+         .wallet-section {
+            width: 100%; /* Let wallet section take full width */
+            justify-content: space-between; /* Spread out elements */
+            gap: 0.2rem; /* Reduced gap */
+         }
+         .connect-btn, .xp-badge {
+            flex-grow: 1; /* Let buttons/badges grow */
+            text-align: center; /* Center text */
+         }
+         .settings-icon {
+             margin-left: 0.2rem; /* Add some space */
+         }
+    }
+
+    /* --- Logo and Network Structure --- */
+    .logo-network {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start; /* Align network to the left */
+        position: relative; /* Needed for absolute positioning of lines */
+        padding-bottom: 0.8rem; /* Reduced space for the network lines below */
+         flex-shrink: 0; /* Prevent shrinking */
+    }
+
+    .logo-main {
+        display: flex;
+        align-items: center;
+        font-size: 1.4rem; /* Reduced font size */
+        font-weight: bold;
+        color: var(--text); /* Use text color for 'WarpAI' */
+        margin-bottom: 0.05rem; /* Reduced space between logo line and text */
+    }
+
+    .logo-symbol {
+         /* Placeholder for your swirling symbol (SVG or Image) */
+         /* Replace this span with your <svg> or <img> tag */
+        font-size: 1.6rem; /* Adjusted placeholder size */
+        margin-right: 0.2rem; /* Reduced margin */
+        color: var(--primary); /* Placeholder color */
+    }
+
+
+    .network-line-v {
+        position: absolute;
+        left: 0.6rem; /* Adjusted position */
+        bottom: 0.2rem; /* Adjusted position */
+        height: 0.6rem; /* Reduced length of vertical line */
+        border-left: var(--header-line); /* Use solid line */
+    }
+
+    .network-line-h {
+        position: absolute;
+        left: 0.6rem; /* Start horizontal line from vertical line */
+        bottom: 0.2rem; /* Adjusted position */
+        width: 160px; /* Adjusted width to better align with title start */
+        border-bottom: var(--header-line); /* Use solid line */
+         /* Adjust width responsively */
+         @media (max-width: 768px) {
+             width: 100px; /* Smaller width on tablets/mobiles */
+         }
+          @media (max-width: 400px) {
+             width: 60px; /* Even smaller width on very small screens */
+          }
+    }
+
+    .header-title {
+        font-size: 0.85rem; /* Reduced font size */
+        color: var(--secondary); /* Use secondary color to make it stand out */
+        font-weight: bold; /* Make it bold */
+        flex-grow: 1; /* Allow title to take available space */
+        text-align: left; /* Align title left by default */
+        /* Adjusted margin to align better with the end of the horizontal line */
+        /* Trying to align to the 'O' in Onchain - requires careful adjustment */
+        /* Approximate width of "Onchain" text + desired gap */
+        margin-left: calc(0.6rem + var(--network-line-h-width, 160px) + 0.5rem); /* Base calculation */
+         /* Further fine-tuning for "Onchain" alignment */
+         letter-spacing: -0.02em; /* Slightly reduce letter spacing if needed */
+         /* Adjust margin on smaller screens using CSS variables */
+        @media (max-width: 768px) {
+             --network-line-h-width: 100px; /* Update variable for this breakpoint */
+             margin-left: calc(0.6rem + var(--network-line-h-width) + 0.5rem);
+         }
+        @media (max-width: 400px) {
+             --network-line-h-width: 60px; /* Update variable for this breakpoint */
+             margin-left: 0;
+             margin-top: 0.2rem; /* Reduced margin */
+             text-align: center;
+        }
+    }
+
+
+    /* --- Wallet Section --- */
+    .wallet-section {
+      display: flex;
+      gap: 0.5rem; /* Reduced gap */
+      align-items: center;
+      flex-shrink: 0; /* Prevent wallet section from shrinking */
+    }
+
+     /* Settings Icon */
+     .settings-icon {
+         font-size: 1.2rem; /* Reduced font size */
+         color: #666;
+         cursor: pointer;
+         transition: color 0.3s;
+     }
+     .settings-icon:hover {
+         color: var(--primary);
+     }
+
+
+    .connect-btn {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      padding: 0.25rem 0.5rem; /* Further reduced padding */
+      border-radius: 4px; /* Reduced border radius */
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.65rem; /* Reduced font size */
+    }
+
+    .connect-btn:hover {
+      background: var(--primary);
+      color: #000;
+    }
+
+    .xp-badge {
+      background: var(--card-bg);
+      padding: 0.25rem 0.5rem; /* Further reduced padding */
+      border-radius: 4px; /* Reduced border radius */
+      font-size: 0.65rem; /* Reduced font size */
+       transition: background 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+    }
+
+     /* Wallet Info Display (after connection) */
+     .wallet-info {
+         display: flex;
+         align-items: center;
+         gap: 0.5rem; /* Space between address/XP and settings */
+     }
+
+     .wallet-address-display {
+         font-size: 0.65rem; /* Match connect button font size */
+         color: var(--text);
+         background: var(--card-bg);
+         padding: 0.25rem 0.5rem;
+         border-radius: 4px;
+          transition: background 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+     }
+
+     .xp-streak-display {
+         display: flex;
+         align-items: center;
+         gap: 0.3rem; /* Space between XP and Streak */
+         font-size: 0.65rem;
+         background: var(--card-bg);
+         padding: 0.25rem 0.5rem;
+         border-radius: 4px;
+          transition: background 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+     }
+      .xp-streak-display .streak-icon {
+          color: var(--secondary); /* Color for streak icon */
+      }
+
+
+    /* --- Tabs (Hidden - using footer nav) --- */
+    .tab-bar {
+      display: none; /* Hide the upper tab bar */
+    }
+
+
+    /* --- Main Content Area --- */
+    .main-content {
+      flex-grow: 1; /* Let main section take up all available space */
+      padding: 0.6rem; /* Reduced padding */
+      max-width: 1200px; /* Max width for larger screens */
+      margin: 0 auto; /* Center content */
+      width: 100%; /* Ensure main takes full width */
+    }
+
+    /* Tab Content Sections */
+    .tab-content {
+        display: none; /* Hide all tab content by default */
+        padding: 0.5rem 0; /* Reduced padding for content */
+    }
+
+    .tab-content.active {
+        display: block; /* Show only the active tab content */
+    }
+
+
+    /* --- Cards --- */
+    .card {
+      background: var(--card-bg);
+      border-radius: 7px; /* Reduced border radius */
+      padding: 0.5rem; /* Significantly reduced padding */
+      margin-bottom: 0.5rem; /* Significantly reduced margin-bottom */
+      width: 100%; /* Ensure cards take full width within their container */
+       transition: background 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+    }
+
+    .grid-container {
+      display: grid;
+      gap: 0.5rem; /* Reduced gap */
+      /* Adjust grid to better fit smaller cards */
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); /* Further reduce min-width for smaller cards */
+    }
+
+     /* Style for the new main activity card (Overview) */
+     .main-activity-card {
+         grid-column: 1 / -1; /* Make it span all columns */
+         padding: 0.7rem; /* Adjusted padding */
+         text-align: center; /* Center content */
+          margin-top: 0.5rem; /* Adjusted margin-top */
+     }
+      .main-activity-card h2 { /* Changed to h2 */
+          color: var(--primary);
+          margin-bottom: 0.5rem; /* Adjusted space below title */
+          text-align: left; /* Align title left */
+          font-size: 0.95rem; /* Adjusted font size */
+      }
+
+      .overview-stats-grid {
+          display: grid;
+          gap: 0.5rem; /* Adjusted gap */
+          /* Updated grid to stack better on smaller screens */
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Increased min-width for better stacking */
+          margin-top: 0.2rem; /* Adjusted margin */
+      }
+
+      .stat-box {
+          background: var(--bg); /* Darker background for stat boxes */
+          border-radius: 4px; /* Reduced border radius */
+          padding: 0.4rem; /* Adjusted padding */
+          text-align: left; /* Align text left */
+          border: 1px solid var(--border); /* Subtle border */
+          display: flex; /* Use flexbox for internal alignment */
+          flex-direction: column; /* Stack content vertically */
+          justify-content: space-between; /* Distribute space */
+           transition: background 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */
+      }
+       .stat-box h3 {
+           font-size: 0.65rem; /* Smaller title */
+           color: #aaa; /* Muted color */
+           margin-bottom: 0.05rem; /* Reduced margin */
+       }
+       .stat-box .stat-value {
+           font-size: 0.85rem; /* Slightly smaller value */
+           font-weight: bold;
+           color: var(--text);
+           margin-bottom: 0.05rem; /* Reduced margin */
+       }
+        .stat-box .stat-details {
+            font-size: 0.5rem; /* Slightly smaller details text */
+            color: #666; /* Muted color */
+            margin-top: auto; /* Push details to the bottom */
+        }
+
+
+    /* --- Gas Meter Card --- */
+    .gas-card h2 {
+        margin-bottom: 0.2rem; /* Reduced margin */
+        font-size: 0.85rem; /* Reduced font size */
+    }
+
+    .gas-meter {
+      margin-top: 0.2rem; /* Reduced margin */
+    }
+
+    .gas-progress {
+      height: 4px; /* Reduced height */
+      background: #2d2d2d;
+      border-radius: 2px; /* Reduced border radius */
+      overflow: hidden;
+      width: 100%; /* Ensure progress bar takes full width */
+      position: relative; /* Needed for pseudo-element */
+    }
+
+    .gas-progress::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: var(--gas-width, 0%); /* Start at 0% */
+      background: linear-gradient(90deg, var(--low-gas), var(--medium-gas)); /* Standard gradient */
+      transition: width 0.5s ease;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Colors for gas meter based on level */
+    .gas-progress.low::after {
+        background: var(--low-gas); /* Green */
+    }
+    .gas-progress.medium::after {
+        background: linear-gradient(90deg, var(--low-gas), var(--medium-gas)); /* Green to Yellow gradient */
+    }
+     .gas-progress.high::after {
+        background: linear-gradient(90deg, var(--medium-gas), var(--high-gas)); /* Yellow to Red gradient */
+     }
+      .gas-progress.very-high::after {
+        background: var(--high-gas); /* Red */
+     }
+
+
+    .gas-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.05rem; /* Reduced margin */
+      font-size: 0.5rem; /* Reduced font size */
+      color: #666;
+    }
+
+    .gas-value {
+      text-align: center;
+      margin-top: 0.05rem; /* Reduced margin */
+      font-size: 0.7rem; /* Reduced font size */
+      font-weight: bold;
+    }
+     /* Style for gas error message */
+     .gas-error-message {
+         font-size: 0.55rem; /* Adjusted font size */
+         color: var(--error);
+         text-align: center;
+         margin-top: 0.2rem; /* Adjusted margin */
+     }
+
+
+    /* --- Points Card --- */
+     .points-card h2 {
+        margin-bottom: 0.2rem; /* Reduced margin */
+        font-size: 0.85rem; /* Reduced font size */
+     }
+
+    .points-display {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem; /* Reduced gap */
+        font-size: 0.8rem; /* Reduced font size */
+        font-weight: bold;
+        align-items: baseline; /* Align text baselines */
+    }
+     /* Adjusted margin for the explanation text below points */
+     .points-card p {
+         font-size: 0.55rem; /* Reduced font size */
+         color: #aaa;
+         text-align: center;
+         margin-top: 0.3rem; /* Ensure consistent spacing */
+     }
+
+
+    /* --- Earnings Card --- */
+     .earnings-card h2 {
+        margin-bottom: 0.2rem; /* Reduced margin */
+        font-size: 0.85rem; /* Reduced font size */
+     }
+
+    .earnings-display {
+        display: flex;
+        flex-direction: column; /* Stack earnings details */
+        gap: 0.15rem; /* Reduced space between stacked earnings */
+        font-size: 0.7rem; /* Reduced font size */
+        align-items: flex-start; /* Align items to the start (left) */
+    }
+     .earnings-summary { /* New div for summary line */
+         display: flex;
+         gap: 0.3rem; /* Reduced gap */
+         font-size: 0.7rem; /* Reduced font size */
+         margin-bottom: 0.08rem; /* Reduced space before detailed breakdown */
+         width: 100%; /* Ensure summary takes full width for alignment */
+          justify-content: space-around; /* Distribute summary items */
+     }
+
+    .earning {
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center text within each earning item */
+    }
+
+    .earning.positive {
+        color: var(--primary); /* Green */
+    }
+
+    .earning.negative {
+        color: var(--error); /* Red */
+    }
+     /* Style for detailed earnings breakdown */
+     .earnings-breakdown {
+         font-size: 0.5rem; /* Reduced font size */
+         color: #aaa;
+         margin-top: 0.2rem; /* Reduced margin */
+         text-align: left; /* Align breakdown text left */
+         width: 100%; /* Ensure breakdown takes full width for alignment */
+     }
+      .earnings-breakdown p {
+          margin-bottom: 0.05rem; /* Reduced space between breakdown lines */
+      }
+      /* Adjusted margin for the explanation text below earnings */
+      .earnings-card p:last-of-type {
+          font-size: 0.55rem; /* Reduced font size */
+          color: #aaa;
+          text-align: center;
+          margin-top: 0.3rem; /* Ensure consistent spacing */
+      }
+
+
+    /* --- Rewards Section --- */
+    .rewards-container { /* New container for Rewards grid */
+        display: grid;
+        gap: 0.8rem; /* Gap between cards */
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid for reward cards */
+    }
+
+    .rewards-card {
+      text-align: center;
+      /* max-width: 500px; Remove max-width when in grid */
+      margin: 0; /* Remove auto margin when in grid */
+      padding: 0.7rem; /* Adjusted padding */
+    }
+
+    .rewards-card h2 {
+        margin-bottom: 0.6rem; /* Adjusted margin */
+        font-size: 1.05rem; /* Adjusted font size */
+    }
+     .rewards-card h3 { /* Styling for sub-titles within rewards cards */
+         margin-top: 0.8rem; /* Adjusted margin */
+         margin-bottom: 0.5rem; /* Adjusted margin */
+         color: var(--primary);
+         font-size: 0.9rem; /* Adjusted font size */
+     }
+      .rewards-card p { /* Styling for text within rewards cards */
+          font-size: 0.7rem; /* Adjusted font size */
+          color: #aaa;
+          margin-bottom: 0.6rem; /* Adjusted margin */
+      }
+
+
+    .benefits-list {
+      list-style: none;
+      margin: 0.8rem 0; /* Adjusted margin */
+      text-align: left;
+    }
+
+    .benefits-list li {
+      padding: 0.3rem 0; /* Adjust padding */
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem; /* Adjust font size */
+       transition: border-color 0.3s ease; /* Smooth theme transition */
+    }
+
+     .benefits-list li:last-child {
+        border-bottom: none;
+     }
+
+    .claim-btn { /* Renamed premium-btn */
+      background: linear-gradient(45deg, var(--primary), var(--secondary));
+      border: none;
+      padding: 0.5rem 1rem; /* Adjusted padding */
+      border-radius: 8px;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      font-size: 0.8rem; /* Adjust font size */
+    }
+
+    /* --- Track Section (Activity Feed) --- */
+    /* Container for Track sections side-by-side on larger screens */
+    .track-container {
+        display: grid;
+        gap: 1rem; /* Gap between columns/rows */
+        grid-template-columns: 1fr; /* Default to single column on small screens */
+    }
+
+     /* Adjust to two columns on larger screens */
+    @media (min-width: 768px) {
+        .track-container {
+            grid-template-columns: 1fr 1fr; /* Two equal columns */
+        }
+         .my-activity-card {
+             grid-column: 1 / 2; /* Place My Activity in the first column */
+         }
+         .favorites-activity-card {
+             grid-column: 2 / 3; /* Place Favorites Activity in the second column */
+         }
+    }
+
+
+     .track-card h2 {
+        margin-bottom: 0.8rem; /* Adjusted margin */
+        font-size: 1.1rem; /* Adjusted font size */
+     }
+
+    .activity-list {
+        /* Add styling for activity list if needed */
+    }
+
+    .feed-item {
+        display: flex;
+        align-items: center;
+        padding: 0.4rem 0; /* Adjusted padding */
+        border-bottom: 1px solid var(--border);
+         transition: border-color 0.3s ease; /* Smooth theme transition */
+    }
+
+    .feed-item:last-child {
+        border-bottom: none;
+    }
+
+    .feed-icon {
+        font-size: 1.1rem; /* Adjusted font size */
+        margin-right: 0.5rem; /* Adjusted margin */
+        flex-shrink: 0;
+    }
+
+    .feed-content {
+        flex-grow: 1;
+        font-size: 0.8rem; /* Adjusted font size */
+    }
+
+    .feed-content strong {
+        color: var(--primary);
+    }
+
+    /* --- Profile Section --- */
+    .profile-card h2 {
+        margin-bottom: 0.8rem; /* Adjusted margin */
+        font-size: 1.2rem; /* Adjusted font size */
+    }
+
+     .profile-info {
+         margin-bottom: 0.8rem; /* Adjusted margin */
+         padding-bottom: 0.8rem; /* Adjusted padding */
+         border-bottom: 1px solid var(--border);
+          transition: border-color 0.3s ease; /* Smooth theme transition */
+     }
+     .profile-info p {
+         margin-bottom: 0.2rem; /* Adjusted margin */
+         font-size: 0.8rem; /* Adjusted font size */
+     }
+     .profile-info strong {
+         color: var(--primary);
+     }
+
+      /* Profile Image Placeholder */
+      .profile-image-placeholder {
+          width: 60px; /* Size of the placeholder/image */
+          height: 60px;
+          border-radius: 50%; /* Make it round */
+          background: #333; /* Placeholder background color */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem; /* Size of the icon/initial */
+          color: #888; /* Color of the icon/initial */
+          margin: 0 auto 0.8rem auto; /* Center and add margin below */
+      }
+       .profile-image-placeholder img {
+           width: 100%;
+           height: 100%;
+           border-radius: 50%;
+           object-fit: cover; /* Ensure image covers the area */
+       }
+
+
+     .profile-card .favorites-list { /* Styling for favorites list within profile */
+         margin-top: 0.8rem; /* Adjusted margin */
+         border-top: 1px solid var(--border);
+         padding-top: 0.8rem; /* Adjusted padding */
+          transition: border-color 0.3s ease; /* Smooth theme transition */
+     }
+
+    .favorite-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.4rem 0; /* Adjusted padding */
+        border-bottom: 1px solid var(--border);
+         transition: border-color 0.3s ease; /* Smooth theme transition */
+    }
+
+     .favorite-item:last-child {
+        border-bottom: none;
+     }
+
+    .favorite-item span {
+        flex-grow: 1;
+        margin-right: 0.5rem; /* Adjusted margin */
+        word-break: break-all; /* Break long addresses */
+        font-size: 0.75rem; /* Adjusted font size */
+        color: #aaa;
+    }
+
+    .favorite-item button {
+        background: none;
+        border: none;
+        color: var(--error);
+        cursor: pointer;
+        font-size: 0.9rem; /* Adjusted font size */
+        flex-shrink: 0;
+    }
+
+     .add-address-form {
+         margin-top: 0.8rem; /* Adjusted margin */
+         display: flex;
+         gap: 0.2rem; /* Adjusted gap */
+     }
+     .add-address-form input {
+         flex-grow: 1;
+         padding: 0.2rem; /* Adjusted padding */
+         border-radius: 4px;
+         border: 1px solid var(--border);
+         background: var(--bg); /* Use background variable */
+         color: var(--text); /* Use text variable */
+          transition: border-color 0.3s ease, background 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+          font-size: 0.8rem; /* Adjusted font size */
+     }
+     .add-address-form button {
+         padding: 0.2rem 0.5rem; /* Adjusted padding */
+         background: var(--secondary);
+         border: none;
+         border-radius: 4px;
+         cursor: pointer;
+         color: #000;
+         font-weight: bold;
+          font-size: 0.8rem; /* Adjusted font size */
+     }
+
+
+    /* --- Invite Section --- */
+     .invite-card h2 {
+        margin-bottom: 0.8rem; /* Adjusted margin */
+        font-size: 1.2rem; /* Adjusted font size */
+     }
+     .invite-card p {
+         margin-bottom: 0.5rem; /* Adjusted margin */
+         color: #aaa;
+         font-size: 0.8rem; /* Adjusted font size */
+     }
+     .invite-card .invite-code {
+         background: var(--bg);
+         padding: 0.4rem; /* Adjusted padding */
+         border-radius: 8px;
+         border: 1px dashed var(--border);
+         font-family: monospace;
+         font-size: 0.9rem; /* Adjusted font size */
+         text-align: center;
+         margin-bottom: 0.8rem; /* Adjusted margin */
+          transition: border-color 0.3s ease, background 0.3s ease; /* Smooth theme transition */
+     }
+     .invite-card .share-btn {
+        background: linear-gradient(45deg, var(--primary), var(--secondary)); /* Use gradient */
+        border: none;
+        padding: 0.6rem 1.2rem; /* Adjusted padding */
+        border-radius: 8px;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+        font-size: 0.85rem; /* Adjusted font size */
+     }
+     .invite-card .share-btn i {
+         margin-right: 0.2rem; /* Adjusted margin */
+     }
+
+     /* --- Settings Section --- */
+     .settings-card {
+         max-width: 500px;
+         margin: 0 auto;
+     }
+     .settings-card h2 {
+         margin-bottom: 0.8rem; /* Adjusted margin */
+         font-size: 1.2rem; /* Adjusted font size */
+     }
+     .settings-option {
+         padding: 0.5rem 0; /* Adjusted padding */
+         border-bottom: 1px solid var(--border);
+          transition: border-color 0.3s ease; /* Smooth theme transition */
+     }
+      .settings-option:last-child {
+          border-bottom: none;
+      }
+      .settings-option label {
+          display: block;
+          margin-bottom: 0.2rem; /* Adjusted margin */
+          color: var(--primary);
+          font-size: 0.8rem; /* Adjusted font size */
+      }
+      .settings-option select, .settings-option input[type="text"] {
+          width: 100%;
+          padding: 0.2rem; /* Adjusted padding */
+          border-radius: 4px;
+          border: 1px solid var(--border);
+          background: var(--bg); /* Use background variable */
+          color: var(--text); /* Use text variable */
+           transition: border-color 0.3s ease, background 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+           font-size: 0.8rem; /* Adjusted font size */
+      }
+      .settings-option p {
+          font-size: 0.55rem; /* Adjusted font size */
+          color: #aaa;
+          margin-top: 0.2rem; /* Adjusted margin */
+      }
+
+
+    /* --- Leaderboard Section --- */
+    /* Container for Leaderboard and My Rank side-by-side on larger screens */
+    .leaderboard-container {
+        display: grid;
+        gap: 1rem; /* Reduced gap between columns/rows */
+        grid-template-columns: 1fr; /* Default to single column on small screens */
+    }
+
+     /* Adjust to two columns on larger screens */
+    @media (min-width: 768px) {
+        .leaderboard-container {
+            grid-template-columns: 1fr 2fr; /* My Rank (1 part) and Leaderboard (2 parts) */
+        }
+         .my-rank-card {
+             grid-column: 1 / 2; /* Place My Rank in the first column */
+         }
+         .leaderboard-card {
+             grid-column: 2 / 3; /* Place Leaderboard in the second column */
+         }
+    }
+
+
+     .leaderboard-card {
+         /* max-width: 800px; Remove max-width to allow grid to control width */
+         margin: 0; /* Remove auto margin when in grid */
+     }
+     .leaderboard-card h2 {
+         margin-bottom: 0.8rem; /* Adjusted margin */
+         font-size: 1.2rem; /* Adjusted font size */
+     }
+     .leaderboard-list {
+         /* Add styling for the list of leaderboard entries */
+     }
+      .leaderboard-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.4rem 0; /* Adjusted padding */
+          border-bottom: 1px solid var(--border);
+           transition: border-color 0.3s ease; /* Smooth theme transition */
+           font-size: 0.8rem; /* Adjusted font size */
+      }
+       .leaderboard-item:last-child {
+           border-bottom: none;
+       }
+       .leaderboard-item .rank {
+           font-weight: bold;
+           color: var(--primary);
+           margin-right: 0.5rem; /* Adjusted margin */
+           flex-shrink: 0; /* Prevent shrinking */
+       }
+       .leaderboard-item .user {
+           flex-grow: 1;
+           font-weight: bold;
+           word-break: break-all; /* Break long usernames */
+       }
+       .leaderboard-item .score {
+           font-weight: bold;
+           color: var(--secondary);
+           flex-shrink: 0; /* Prevent shrinking */
+           margin-left: 0.5rem; /* Adjusted margin */
+       }
+      .leaderboard-card p {
+          font-size: 0.55rem; /* Adjusted font size */
+          color: #aaa;
+          text-align: center;
+          margin-top: 0.5rem; /* Adjusted margin */
+      }
+
+      /* Style for My Rank Card */
+      .my-rank-card {
+          /* Inherits .card styles */
+           /* max-width: 500px; Remove max-width */
+           margin: 0; /* Remove auto margin when in grid */
+      }
+       .my-rank-card h2 {
+           margin-bottom: 0.6rem; /* Adjusted margin */
+           font-size: 1rem; /* Adjusted font size */
+       }
+        .my-rank-card p {
+            font-size: 0.7rem; /* Adjusted font size */
+            color: #aaa;
+            margin-bottom: 0.5rem; /* Adjusted margin */
+        }
+         .my-rank-card strong {
+             color: var(--primary); /* Use primary color for rank/score */
+         }
+         .my-rank-card p:last-of-type { /* Explanation text */
+             font-size: 0.55rem; /* Adjusted font size */
+             color: #aaa;
+             text-align: center;
+             margin-top: 0.4rem; /* Adjusted margin */
+         }
+
+
+    /* --- Footer Navigation --- */
+    .footer-nav {
+        position: fixed; /* Pin to screen */
+        bottom: 0; /* At the bottom */
+        left: 0;
+        width: 100%; /* Full width */
+        background: var(--card-bg); /* Dark background */
+        border-top: 1px solid var(--border); /* Thin line at the top */
+        display: flex;
+        justify-content: space-around; /* Distribute buttons evenly */
+        align-items: center;
+        padding: 0.3rem 0; /* Further reduced vertical padding */
+        z-index: 10; /* Ensure it's above content */
+         transition: background 0.3s ease, border-color 0.3s ease; /* Smooth theme transition */
+    }
+
+    .footer-nav button {
+        background: none;
+        border: none;
+        color: #666; /* Standard color */
+        font-size: 0.65rem; /* Reduced font size */
+        display: flex;
+        flex-direction: column; /* Icon above text */
+        align-items: center;
+        cursor: pointer;
+        padding: 0.2rem; /* Further reduced touch area */
+        transition: color 0.3s;
+        flex-grow: 1; /* Allow buttons to grow */
+        text-align: center; /* Center text */
+    }
+
+    .footer-nav button i {
+        font-size: 1.1rem; /* Reduced icon size */
+        margin-bottom: 0.05rem; /* Reduced space between icon and text */
+    }
+
+    .footer-nav button.active {
+        color: var(--primary); /* Active color */
+    }
+
+     /* --- Responsive Adjustments --- */
+    @media (max-width: 768px) {
+      .grid-container {
+        grid-template-columns: 1fr; /* Single column on small screens */
+      }
+
+      .header-content {
+        /* Retain row direction for screens between 400px and 768px */
+        flex-direction: row;
+        gap: 0.6rem; /* Reduced gap */
+      }
+       .wallet-section {
+            width: auto; /* Reset width */
+            justify-content: flex-start; /* Reset alignment */
+            gap: 0.6rem; /* Reduced gap */
+         }
+         .connect-btn, .xp-badge {
+            flex-grow: 0; /* Reset flex-grow */
+            text-align: left; /* Reset text-align */
+         }
+
+
+      .tab-bar {
+        /* Already set to wrap and smaller gap above */
+      }
+
+      .card {
+        padding: 0.5rem; /* Adjusted padding */
+         margin-bottom: 0.5rem; /* Adjusted margin */
+      }
+
+      .rewards-card, .settings-card { /* Apply to rewards and settings cards */
+        margin: 0.4rem auto; /* Reduce margin on these cards */
+      }
+
+      .leaderboard-container { /* Adjust leaderboard container on small screens */
+          gap: 0.6rem; /* Reduce gap */
+      }
+       .track-container { /* Adjust track container on small screens */
+           gap: 0.6rem; /* Reduce gap */
+       }
+        .rewards-container { /* Adjust rewards container on small screens */
+           gap: 0.6rem; /* Reduce gap */
+           grid-template-columns: 1fr; /* Single column on small screens */
+       }
+
+
+      .benefits-list li {
+         padding: 0.3rem 0; /* Reduce padding on list items */
+         font-size: 0.75rem; /* Adjust font size */
+      }
+
+      .claim-btn { /* Apply to claim button */
+        padding: 0.4rem 0.8rem; /* Reduce button padding */
+        font-size: 0.75rem; /* Adjusted font size */
+      }
+
+       .main-content {
+           padding-bottom: 70px; /* Increase bottom padding to avoid being hidden by footer */
+       }
+        .main-activity-card {
+            padding: 0.6rem; /* Adjusted padding */
+             margin-top: 0.5rem; /* Adjusted margin */
+        }
+         .overview-stats-grid {
+             gap: 0.5rem; /* Adjusted gap */
+              /* Updated grid to stack better on smaller screens */
+             grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Adjusted min-width */
+         }
+          .stat-box {
+              padding: 0.4rem; /* Adjusted padding */
+          }
+           .stat-box h3 {
+               font-size: 0.55rem; /* Adjusted font size */
+           }
+            .stat-box .stat-value {
+               font-size: 0.85rem; /* Adjusted font size */
+           }
+            .stat-box .stat-details {
+                font-size: 0.5rem; /* Adjusted font size */
+            }
+    }
+
+     /* Further adjustments for very small screens (e.g., 375px) */
+    @media (max-width: 400px) {
+        body {
+            padding: 4px; /* Reduce body padding */
+            padding-bottom: 60px; /* Ensure padding for footer */
+        }
+
+        .app-header {
+            padding: 0.3rem; /* Reduce header padding */
+        }
+
+        .tab-bar {
+            padding: 0.3rem; /* Reduce tab bar padding */
+            gap: 0.1rem; /* Reduce gap between tabs */
+        }
+
+        .tab {
+            font-size: 0.6rem; /* Reduce tab font size */
+            padding: 0.1rem 0.2rem; /* Adjust tab padding */
+        }
+
+        .card {
+            padding: 0.3rem; /* Reduce card padding further */
+             margin-bottom: 0.4rem; /* Adjusted margin */
+        }
+
+        .grid-container {
+             gap: 0.4rem; /* Minska gap i grid */
+        }
+
+        .logo-main {
+             font-size: 1.2rem; /* Reduce logo font size */
+        }
+         .logo-symbol {
+             font-size: 1.3rem; /* Adjust symbol size */
+         }
+
+
+        .wallet-section {
+            gap: 0.3rem; /* Reduce gap in wallet section */
+        }
+
+        .connect-btn, .xp-badge {
+            padding: 0.08rem 0.3rem; /* Reduce padding on buttons/badges */
+            font-size: 0.55rem; /* Reduce font size */
+        }
+
+         .points-display {
+            font-size: 0.75rem; /* Reduce font size for points */
+         }
+
+         .points-display button {
+             font-size: 0.55rem;
+             padding: 0.08rem 0.25rem;
+         }
+
+         .earnings-display {
+            gap: 0.15rem; /* Adjusted gap */
+            font-size: 0.65rem; /* Reduce font size */
+         }
+          .earnings-summary {
+              gap: 0.3rem; /* Adjusted gap */
+              font-size: 0.65rem;
+          }
+
+
+         .earning .label {
+             font-size: 0.4rem; /* Reduce font size on labels */
+         }
+
+         .gas-value {
+            font-size: 0.7rem; /* Reduce font size on gas value */
+         }
+
+         .feed-icon {
+            font-size: 0.9rem; /* Reduce icon size in feed */
+            margin-right: 0.3rem; /* Reduce margin */
+         }
+
+         .feed-content {
+            font-size: 0.65rem; /* Reduce font size in feed */
+         }
+
+         .favorite-item span {
+             font-size: 0.55rem; /* Reduce font size for favorites */
+         }
+
+         .favorite-item button {
+             font-size: 0.65rem; /* Reduce icon size for favorites */
+         }
+
+         .footer-nav button {
+             font-size: 0.45rem; /* Reduce font size in footer */
+             padding: 0.08rem;
+         }
+         .footer-nav button i {
+             font-size: 0.7rem; /* Reduce icon size in footer */
+         }
+
+         .main-content {
+           padding-bottom: 60px; /* Ensure bottom padding */
+         }
+         .main-activity-card {
+             padding: 0.4rem; /* Adjusted padding */
+              margin-top: 0.4rem; /* Adjusted margin */
+         }
+          .overview-stats-grid {
+             gap: 0.4rem; /* Adjusted gap */
+              /* Updated grid to stack better on smaller screens */
+             grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Adjusted min-width further */
+         }
+          .stat-box {
+              padding: 0.3rem; /* Adjusted padding */
+          }
+           .stat-box h3 {
+               font-size: 0.55rem; /* Adjusted font size */
+           }
+            .stat-box .stat-value {
+               font-size: 0.7rem; /* Adjusted font size */
+           }
+            .stat-box .stat-details {
+                font-size: 0.5rem; /* Adjusted font size */
+            }
+
+    }
+
+
+  </style>
+</head>
+<body data-theme="dark">
+  <header class="app-header">
+    <div class="header-content">
+        <div class="logo-network">
+            <div class="logo-main">
+                <span class="logo-symbol">✨</span> WarpAI
+            </div>
+            <div class="network-line-v"></div>
+            <div class="network-line-h"></div>
+        </div>
+       <div class="header-title">Onchain Activity Tracker</div>
+       <div class="wallet-section">
+        <div class="xp-badge" id="xpDisplay">0 XP 🔥</div>
+        <button class="connect-btn" id="connectWallet">Connect Wallet</button>
+         <div class="wallet-info" id="connectedWalletInfo" style="display: none;">
+             <span class="wallet-address-display" id="headerWalletAddress"></span>
+             <span class="xp-streak-display" id="headerXPStreak">
+                 <span id="headerXP">0 XP</span>
+                 <span class="streak-icon">🔥</span>
+                 <span id="headerStreak">0</span>
+             </span>
+              <i class="fas fa-cog settings-icon" id="settingsIconConnected" title="Settings"></i>
+         </div>
+         <i class="fas fa-cog settings-icon" id="settingsIconDisconnected" title="Settings"></i>
+       </div>
+    </div>
+  </header>
+
+  <nav class="tab-bar">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="premium">Premium</button>
+    <button class="tab" data-tab="activity">Activity</button>
+  </nav>
+
+  <main class="main-content">
+    <section id="home" class="tab-content active">
+      <div class="grid-container">
+        <div class="card gas-card">
+          <h2>⛽ Base Gas Fee</h2>
+          <div class="gas-meter">
+            <div class="gas-progress" id="gasProgress"></div>
+            <div class="gas-labels">
+              <span>Low</span>
+              <span>Avg</span>
+              <span>High</span>
+            </div>
+            <div class="gas-value" id="gasValue">0 Gwei ($0.00)</div>
+          </div>
+           <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Displays current gas fee on the Base network.</p>
+        </div>
+
+        <div class="card points-card">
+          <h2>🪙 WarpPoints</h2>
+          <div class="points-display">
+            <span id="warpPoints">0</span> WP
+            <button class="buy-btn" id="buyWP">Buy WP</button>
+          </div>
+           <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Earn WarpPoints through onchain activity.</p>
+        </div>
+
+        <div class="card earnings-card">
+          <h2>💰 Earnings</h2>
+          <div class="earnings-display">
+              <div class="earnings-summary">
+                <div class="earning positive">
+                  +$0.82 <span class="label">Profit</span>
+                </div>
+                <div class="earning negative">
+                  -$0.12 <span class="label">Fees</span>
+                </div>
+              </div>
+               <div class="earnings-breakdown">
+                   <p>Today: +$0.10 (Fees: -$0.01)</p>
+                   <p>Last 7 Days: +$0.50 (Fees: -$0.05)</p>
+                   <p>Last 30 Days: +$0.82 (Fees: -$0.12)</p>
+               </div>
+          </div>
+           <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Mock data - real-time tracking coming soon.</p>
+        </div>
+      </div>
+
+       <div class="card main-activity-card">
+           <h2>📊 Your Onchain Overview</h2>
+           <div class="overview-stats-grid">
+               <div class="stat-box">
+                   <h3>Gas Fees Paid (30D)</h3>
+                   <div class="stat-value">$X.XX</div>
+                   <div class="stat-details">
+                       Base: $Y.YY<br> ETH: $Z.ZZ
+                   </div>
+               </div>
+               <div class="stat-box">
+                   <h3>Successful Mints/Trades (30D)</h3>
+                   <div class="stat-value">N</div>
+                   <div class="stat-details">
+                       Mints: N<br> Trades: N
+                   </div>
+               </div>
+               <div class="stat-box">
+                   <h3>Total Volume (30D)</h3>
+                   <div class="stat-value">$A.AA</div>
+                   <div class="stat-details">
+                       Minted: $B.BB<br>
+                       Traded: $C.CC
+                   </div>
+               </div>
+                <div class="stat-box">
+                   <h3>Most Active Day (30D)</h3>
+                   <div class="stat-value">Date</div>
+                   <div class="stat-details">
+                       TX Count: N<br>
+                       Gas Spent: $D.DD
+                   </div>
+               </div>
+                <div class="stat-box">
+                    <h3>Average Gas Paid (Last 10 TX)</h3>
+                    <div class="stat-value">X Gwei</div>
+                    <div class="stat-details">
+                        Avg Cost: $E.EE
+                    </div>
+                </div>
+                 <div class="stat-box">
+                     <h3>Last Trade Result</h3>
+                     <div class="stat-value earning positive">+$F.FF</div>
+                     <div class="stat-details">
+                         (Profit/Loss excl. fees)
+                     </div>
+                 </div>
+                  <div class="stat-box">
+                      <h3>Daily P/L (Today)</h3>
+                      <div class="stat-value earning positive">+$G.GG</div>
+                      <div class="stat-details">
+                          (Excl. fees)
+                      </div>
+                  </div>
+                   <div class="stat-box">
+                       <h3>Daily Fees (Today)</h3>
+                       <div class="stat-value earning negative">-$H.HH</div>
+                       <div class="stat-details">
+                           (Total gas/protocol fees)
+                       </div>
+                   </div>
+               </div>
+            <p style="font-size: 0.7rem; color: #aaa; text-align: center; margin-top: 1rem;">Real-time data and detailed analytics will appear here. (Stats are mock data)</p>
+       </div>
+
+    </section>
+
+    <section id="rewards" class="tab-content">
+        <div class="rewards-container">
+            <div class="card rewards-card">
+                <h2>🏆 My Rewards</h2>
+                <div class="points-display" style="justify-content: center; margin-bottom: 0.8rem;">
+                    <span id="rewardsWarpPoints">0</span> WP
+                </div>
+                <button class="claim-btn" id="claimDaily">Claim Daily Bonus</button>
+                 <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Claim your daily reward!</p>
+            </div>
+
+             <div class="card rewards-card">
+                 <h2>✨ Premium Benefits</h2>
+                 <p style="font-size: 0.7rem; color: #aaa; margin-bottom: 0.8rem;">Unlock exclusive perks with Premium!</p>
+                 <ul class="benefits-list">
+                     <li>🔒 Gas discounts up to 50%</li>
+                     <li>🚀 Exclusive NFT drops</li>
+                     <li>📈 XP boosters</li>
+                 </ul>
+                 <button class="claim-btn" id="buyPremium" style="margin-top: 0.8rem;">Buy Premium - 0.009 ETH</button>
+             </div>
+
+             <div class="card rewards-card">
+                 <h2>🎯 Challenges</h2>
+                 <p style="font-size: 0.7rem; color: #aaa; margin-bottom: 0.8rem;">Complete challenges to earn more!</p>
+                  <ul class="benefits-list">
+                      <li>Cast once today: +10 WP</li>
+                      <li>Mint an NFT: +50 WP</li>
+                      <li>Trade on a DEX: +30 WP</li>
+                      <li>Share your activity on X: +15 WP</li>
+                      <li>Share your invite code: +20 WP (per successful invite)</li>
+                      <li>Use a specific Dapp: +X WP</li>
+                      <li>Achieve Daily Streak: +X WP</li>
+                      <li>Make a Cast about WarpAI: +X WP</li>
+                      <li>Share with a Cast in a Farcaster channel: +X WP</li>
+                  </ul>
+                  <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Daily and Weekly challenges coming soon.</p>
+             </div>
+
+             <div class="card rewards-card">
+                 <h2>🎁 Claimable</h2>
+                 <p style="font-size: 0.7rem; color: #aaa; margin-bottom: 0.8rem;">Check here for rewards you can claim!</p>
+                 <div style="text-align: center; color: #666; font-size: 0.75rem;">
+                     [List of claimable items/buttons here]
+                 </div>
+                  <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Your earned rewards will appear here.</p>
+             </div>
+
+       </div>
+    </section>
+
+     <section id="track" class="tab-content">
+         <div class="track-container">
+             <div class="card my-activity-card">
+                 <h2>📜 My Latest Onchain Activity</h2>
+                 <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 0.8rem;">Recent transactions and mints from your connected wallet.</p>
+                 <div class="activity-list" id="myActivityList">
+                     <div class="feed-item mint">
+                       <div class="feed-icon">🖼️</div>
+                       <div class="feed-content">
+                         <strong>You</strong> Minted NFT #456 on Zora
+                       </div>
+                     </div>
+                      <div class="feed-item transfer">
+                       <div class="feed-icon">💸</div>
+                       <div class="feed-content">
+                         <strong>You</strong> Transferred 0.1 ETH to 0xabc...'
+                       </div>
+                     </div>
+                 </div>
+                  <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">(Requires wallet connection)</p>
+             </div>
+
+             <div class="card favorites-activity-card">
+                 <h2>⭐ Favorite Addresses Activity</h2>
+                 <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 0.8rem;">Latest activity from your saved addresses.</p>
+                 <div class="activity-list" id="favoritesActivityList">
+                     <div class="feed-item mint">
+                       <div class="feed-icon">🖼️</div>
+                       <div class="feed-content">
+                         <strong>vitalik.eth</strong> Minted NFT #789
+                       </div>
+                     </div>
+                     <div class="feed-item transfer">
+                       <div class="feed-icon">💸</div>
+                       <div class="feed-content">
+                         <strong>satoshi.eth</strong> Transferred 5 ETH
+                       </div>
+                     </div>
+                      <div class="feed-item trade">
+                       <div class="feed-icon">💱</div>
+                       <div class="feed-content">
+                         <strong>jesse pollak</strong> Posted "zora2.0Getrekt" @ zora.co [TRADE TOKEN]'
+                       </div>
+                     </div>
+                 </div>
+                 <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">(Add addresses in Profile to track)</p>
+             </div>
+         </div>
+
+         <div class="card" style="margin-top: 1.2rem;">
+            <h2>📈 Gas Analytics</h2>
+            <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 0.8rem;">View historical gas price data (coming soon).</p>
+            <div style="text-align: center; color: #666;">
+                [Placeholder for Gas Price Chart]
+            </div>
+        </div>
+       </section>
+
+     <section id="leaderboard" class="tab-content">
+         <div class="leaderboard-container">
+             <div class="card my-rank-card">
+                 <h2>📊 My Rank</h2>
+                 <p style="font-size: 0.75rem; color: #aaa;">Your current rank and score:</p>
+                 <p style="font-size: 1rem; font-weight: bold; text-align: center;">#N - YourUsername (X WP)</p>
+                  <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.4rem;">(Requires wallet connection)</p>
+             </div>
+             <div class="card leaderboard-card">
+                 <h2>🏆 Leaderboard</h2>
+                  <p style="font-size: 0.7rem; color: var(--primary); margin-bottom: 0.8rem;">Earn WarpPoints by being active onchain (mints, trades, etc.)!</p>
+                 <div class="leaderboard-list">
+                     <div class="leaderboard-item">
+                         <span class="rank">#1</span>
+                         <span class="user">vitalik.eth</span>
+                         <span class="score">15000 WP</span>
+                     </div>
+                     <div class="leaderboard-item">
+                         <span class="rank">#2</span>
+                         <span class="user">satoshi.eth</span>
+                         <span class="score">12000 WP</span>
+                     </div>
+                      <div class="leaderboard-item">
+                         <span class="rank">#3</span>
+                         <span class="user">user123</span>
+                         <span class="score">9500 WP</span>
+                     </div>
+                 </div>
+                  <p style="font-size: 0.6rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Leaderboard based on WarpPoints (mock data).</p>
+             </div>
+         </div>
+          <div class="card" style="margin-top: 1.2rem;">
+             <h2>📈 Leaderboard Metrics</h2>
+             <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 0.8rem;">View leaderboards for different metrics (coming soon).</p>
+             <div style="text-align: center; color: #666;">
+                 [Dropdown/buttons for different leaderboards: Gas Savers, Most Active, etc.]
+             </div>
+         </div>
+     </section>
+
+
+     <section id="profile" class="tab-content">
+         <div class="card profile-card">
+             <h2>👤 My Profile</h2>
+              <div class="profile-image-placeholder">
+                  <i class="fas fa-user"></i>
+              </div>
+             <div class="profile-info">
+                 <p>Wallet Address: <strong id="profileWalletAddress">Not Connected</strong></p>
+                 <p>WarpPoints: <strong id="profileWarpPoints">0</strong> WP</p>
+                 <p>XP: <strong id="profileXP">0</strong> 🔥</p>
+                 <p>Premium Status: <strong id="premiumStatus">Inactive</strong></p>
+             </div>
+
+             <h3 style="margin-top: 1.2rem; margin-bottom: 0.6rem; color: var(--primary); font-size: 1rem;">Saved Addresses</h3>
+             <div class="favorites-list">
+             </div>
+             <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Add addresses to track here.</p>
+             <div class="add-address-form">
+                 <input type="text" id="newFavoriteAddress" placeholder="Add address..." >
+                 <button id="addFavoriteBtn">Add</button>
+             </div>
+              <div style="margin-top: 1.2rem;">
+                  <h3 style="margin-top: 1.2rem; margin-bottom: 0.6rem; color: var(--primary); font-size: 1rem;">Linked Wallets</h3>
+                  <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 0.8rem;">Link multiple wallets to consolidate your onchain activity and earn bonuses!</p>
+                   <div style="text-align: center; color: #666;">
+                       [Button/UI to link another wallet]
+                   </div>
+                   <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.4rem;">(Requires wallet connection)</p>
+              </div>
+        </div>
+         <div class="card">
+              <h2>🏅 My Badges</h2>
+               <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 0.8rem;">Earn badges for your onchain achievements!</p>
+               <div style="text-align: center; color: #666;">
+                   [Badge Icons/Placeholders Here]
+               </div>
+               <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.4rem;">(Requires wallet connection)</p>
+          </div>
+     </section>
+
+     <section id="invite" class="tab-content">
+         <div class="card invite-card">
+             <h2>💌 Invite Friends</h2>
+             <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 0.8rem;">Share your unique invite code to earn extra WarpPoints when your friends become active!</p>
+             <div class="invite-code">WARPAI-XYZ123</div>
+             <button class="share-btn"><i class="fas fa-share-alt"></i> Share Code</button>
+             <p style="font-size: 0.65rem; color: #aaa; text-align: center; margin-top: 0.6rem;">Mock data - real invite logic coming soon.</p>
+         </div>
+    </section>
+
+     <section id="settings" class="tab-content">
+         <div class="card settings-card">
+              <h2>⚙️ Inställningar</h2>
+              <div class="settings-option">
+                  <label for="languageSelect">Språk:</label>
+                  <select id="languageSelect">
+                      <option value="en">English</option>
+                      <option value="sv">Svenska</option>
+                  </select>
+              </div>
+               <div class="settings-option">
+                   <label for="themeToggle">Tema:</label>
+                   <select id="themeToggle">
+                       <option value="dark">Mörkt Läge</option>
+                       <option value="light">Ljust Läge</option>
+                   </select>
+               </div>
+               <div class="settings-option">
+                   <label for="owlracleApiKeyInput">Owlracle API-nyckel:</label>
+                   <input type="text" id="owlracleApiKeyInput" placeholder="Ange din API-nyckel">
+                    <p style="font-size: 0.6rem; color: #aaa; margin-top: 0.3rem;">Ange din personliga Owlracle API-nyckel f\u00F6r mer p\u00E5litlig gasdata.</p>
+               </div>
+         </div>
+     </section>
+
+
+  </main>
+
+  <nav class="footer-nav">
+    <button class="footer-tab active" data-tab="home" title="Home">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+    </button>
+    <button class="footer-tab" data-tab="track" title="Track Onchain Activity">
+        <i class="fas fa-chart-line"></i>
+        <span>Track</span>
+    </button>
+     <button class="footer-tab" data-tab="leaderboard" title="Leaderboard">
+        <i class="fas fa-trophy"></i>
+        <span>Leaderboard</span>
+    </button>
+    <button class="footer-tab" data-tab="rewards" title="Rewards">
+        <i class="fas fa-gift"></i>
+        <span>Rewards</span>
+    </button>
+    <button class="footer-tab" data-tab="profile" title="Profile">
+        <i class="fas fa-user"></i>
+        <span>Profile</span>
+    </button>
+     <button class="footer-tab" data-tab="invite" title="Invite Friends">
+        <i class="fas fa-user-plus"></i>
+        <span>Invite</span>
+    </button>
+  </nav>
+
+
+  <script>
+    // --- Global Variables ---
+    // These will be updated with real data after WalletConnect and API integrations
+    let provider; // Ethereum provider (e.g., Metamask, WalletConnect) - Note: With wagmi/viem, direct provider/signer might be less used
+    let signer;   // Signer for transactions - Note: With wagmi/viem, transactions are handled differently
+    let userAddress = null; // Store connected wallet address
+    // NOTE: Replace 'demo' with your actual default Owlracle API key if you have one, or leave as 'demo' for public tier.
+    // The user can also enter their key in Settings, which overrides this.
+    let owlracleApiKey = 'b9bee1f4421d4eebb170067dc3e2e579'; // API Key provided by user
+
+    // --- TODO: Replace with your actual WarpAI Token Contract Address on Base ---
+    // This address is used for displaying the token balance.
+    const WARPAI_TOKEN_CONTRACT_ADDRESS = "0xYourWarpAITokenContractAddressHere"; // Replace with your token address
+
+    // --- WalletConnect Project ID ---
+    // You need to get a Project ID from WalletConnect Cloud (walletconnect.com)
+    // Replace 'YOUR_WALLETCONNECT_PROJECT_ID' with your actual Project ID
+    // Get your Project ID here: https://cloud.walletconnect.com/
+    const WALLETCONNECT_PROJECT_ID = 'c0aa1ca206eb7d58226102b102ec49e9';
+    if (WALLETCONNECT_PROJECT_ID === 'YOUR_WALLETCONNECT_PROJECT_ID') {
+        console.warn("Please replace 'YOUR_WALLETCONNECT_PROJECT_ID' with your actual Project ID from walletconnect.com");
+        // You might want to disable the connect button or show a warning in the UI
+    }
+
+
+    // --- DOM Element References ---
+    const connectWalletBtn = document.getElementById('connectWallet');
+    const connectedWalletInfo = document.getElementById('connectedWalletInfo'); // New div for connected state
+    const headerWalletAddressDisplay = document.getElementById('headerWalletAddress'); // Wallet address in header
+    const headerXPStreakDisplay = document.getElementById('headerXPStreak'); // XP and Streak in header
+    const headerXPDisplay = document.getElementById('headerXP'); // XP span in header
+    const headerStreakDisplay = document.getElementById('headerStreak'); // Streak span in header
+
+    const xpDisplay = document.getElementById('xpDisplay'); // Old XP in header (will hide)
+    const settingsIconDisconnected = document.getElementById('settingsIconDisconnected'); // Settings icon when disconnected
+    const settingsIconConnected = document.getElementById('settingsIconConnected'); // Settings icon when connected
+
+
+    const gasProgress = document.getElementById('gasProgress'); // Gas meter progress bar
+    const gasValue = document.getElementById('gasValue'); // Gas value text
+    const warpPointsDisplay = document.getElementById('warpPoints'); // WP in Overview card
+    const rewardsWarpPointsDisplay = document.getElementById('rewardsWarpPoints'); // WP in Rewards card
+    const buyWPBtn = document.getElementById('buyWP'); // Buy WP button
+    const buyPremiumBtn = document.getElementById('buyPremium'); // Buy Premium button
+    const claimDailyBtn = document.getElementById('claimDaily'); // Claim Daily button
+    const myActivityListContainer = document.getElementById('myActivityList'); // Container for user's activity feed items
+    const favoritesActivityListContainer = document.getElementById('favoritesActivityList'); // Container for favorites activity feed items
+    const favoritesListContainer = document.querySelector('.favorites-list'); // Container for saved addresses in Profile
+    const addFavoriteBtn = document.getElementById('addFavoriteBtn'); // Button to add saved address
+    const newFavoriteAddressInput = document.getElementById('newFavoriteAddress'); // Input for new saved address
+    const settingsSection = document.getElementById('settings'); // Settings content section
+    const languageSelect = document.getElementById('languageSelect'); // Language select dropdown
+    const themeToggle = document.getElementById('themeToggle'); // Theme toggle select dropdown
+    const owlracleApiKeyInput = document.getElementById('owlracleApiKeyInput'); // Owlracle API key input
+    const profileWalletAddressDisplay = document.getElementById('profileWalletAddress'); // Wallet address in Profile section
+    const profileWarpPointsDisplay = document.getElementById('profileWarpPoints'); // WP in Profile section
+    const profileXPDisplay = document.getElementById('profileXP'); // XP in Profile section
+    const premiumStatusDisplay = document.getElementById('premiumStatus'); // Premium status in Profile section
+    const leaderboardListContainer = document.querySelector('.leaderboard-list'); // Container for leaderboard items
+    const profileImagePlaceholder = document.querySelector('.profile-image-placeholder'); // Profile image placeholder
+     const shareBtn = document.querySelector('.invite-card .share-btn'); // Share button
+
+
+    // Declare wagmi config and client globally
+    let config;
+    let client;
+
+
+    // --- Wagmi/Viem Setup ---
+    // Configure chains - Using wagmi.chains from the new CDN link (wagmi v1.x)
+    // Check if wagmi is defined before using it
+    const base = typeof wagmi !== 'undefined' && typeof wagmi.chains !== 'undefined' ? wagmi.chains.base : {
+        id: 8453, // Base Chain ID
+        name: 'Base',
+        network: 'base',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: {
+            default: { http: ['https://mainnet.base.org'] },
+            public: { http: ['https://mainnet.base.org'] },
+        },
+        blockExplorers: {
+            etherscan: { name: 'Basescan', url: 'https://basescan.org' },
+            default: { name: 'Basescan', url: 'https://basescan.org' },
+        },
+        contracts: {
+            multicall3: {
+                address: '0xcA11bde05977b3631167028862bE2a173976CA11',
+                blockCreated: 8440150,
+            },
+        },
+    };
+
+
+    // Configure WalletConnect connector - Using wagmi.connectors from the new CDN link (wagmi v1.x)
+    // Check if wagmi is defined before using it
+    const walletConnectConnector = typeof wagmi !== 'undefined' && typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
+        chains: [base], // Support Base chain
+        options: {
+           projectId: WALLETCONNECT_PROJECT_ID, // Your WalletConnect Project ID
+           showQrModal: true, // Show the QR modal
+           // Note: WalletConnectModal is used directly for theme setting elsewhere
+        }
+    }) : null; // Set to null if wagmi or wagmi.connectors is not defined
+
+
+    // --- Wallet Connection Logic (using Wagmi) ---
+    async function connectWallet() {
+      if (WALLETCONNECT_PROJECT_ID === 'YOUR_WALLETCONNECT_PROJECT_ID') {
+          alert("Please set your WalletConnect Project ID in the code.");
+          console.error("WalletConnect Project ID is not set.");
+          return;
+      }
+      // Ensure wagmi config is created and connector is available before connecting
+      if (!config || !walletConnectConnector) {
+          console.error("Wagmi config or connector not initialized.");
+          alert("Failed to initialize wallet connection. Please try refreshing.");
+          return;
+      }
+      try {
+        console.log('Attempting WalletConnect connection with Wagmi...');
+        // Use wagmi's connect function with the WalletConnect connector
+        // This will trigger the WalletConnect modal if showQrModal is true in options
+        const { connector } = await config.connect({ connector: walletConnectConnector });
+
+        // The subscribe function below will handle state changes after connection
+        // No need for manual modalProvider listeners here when using wagmi's subscribe
+
+      } catch (error) {
+        console.error('Wallet Connection Error:', error);
+        // Provide user feedback based on error
+        const t = translations[languageSelect.value] || translations['en'];
+        if (error.message.includes('User rejected request')) {
+             alert(t.walletRejected);
+        } else {
+             alert(t.walletConnectError + error.message);
+        }
+        // updateWalletUI(false); // Wagmi subscription will handle UI update
+      }
+    }
+
+    // --- Disconnect Wallet (using Wagmi) ---
+    async function disconnectWallet() {
+        console.log('Disconnecting wallet with Wagmi...');
+        // Ensure wagmi config is created before disconnecting
+         if (!config) {
+             console.error("Wagmi config not initialized.");
+             return;
+         }
+        try {
+            // Use wagmi's disconnect function
+            await config.disconnect();
+            console.log('Wallet disconnected.');
+            // updateWalletUI(false); // Wagmi subscription will handle UI update
+            // Clear displayed onchain data
+            loadOnchainData(null);
+        } catch (error) {
+            console.error('Wallet Disconnection Error:', error);
+            const t = translations[languageSelect.value] || translations['en'];
+            alert('Something went wrong during wallet disconnection: ' + error.message);
+        }
+    }
+
+     // --- Initialize Wagmi ---
+     // This function creates the wagmi config and client
+     function initializeWagmi() {
+         // Explicit check for required global objects before proceeding
+         // Checking for a specific function like createClient makes the check more robust for wagmi v1.x
+         // Checking for createPublicClient for viem
+         if (typeof wagmi === 'undefined' || typeof wagmi.createClient !== 'function' || typeof viem === 'undefined' || typeof viem.createPublicClient !== 'function') {
+             console.error("Required wagmi/viem objects not fully loaded/ready. Cannot initialize.");
+             // This scenario should ideally be caught by waitForWagmiAndViem, but is a good safety check.
+             return;
+         }
+         console.log('Initializing Wagmi and Viem...');
+
+         // Use wagmi.createClient from the new CDN link (wagmi v1.x)
+         config = wagmi.createClient({
+             autoConnect: true, // Attempt to auto-connect previous session
+             connectors: [
+                 // Use the walletConnectConnector created using wagmi.connectors
+                 walletConnectConnector,
+                 // --- TODO: Add other connectors like InjectedConnector (for Metamask browser extension) ---
+                 // Example using wagmi.connectors:
+                 typeof wagmi !== 'undefined' && typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.InjectedConnector({ chains: [base] }) : null,
+             ].filter(connector => connector !== null), // Filter out null connectors if any failed to initialize
+             provider: ({ chainId }) => viem.createPublicClient({ // Use viem to create a public client
+                 chain: base, // Use the base object from wagmi.chains
+                 transport: viem.http() // Use HTTP transport from viem
+             }),
+             // Note: Wagmi v1.x uses `provider` function, not `publicClient` directly in createClient
+             // --- TODO: Add wallet client if needed for signing/sending transactions ---
+             // walletClient: viem.createWalletClient({ ... })
+         });
+
+         // Check if config was successfully created
+         if (!config) {
+             console.error("Failed to create wagmi config.");
+             return;
+         }
+
+         // Wagmi v1.x client is the config object itself
+         client = config;
+
+         // Subscribe to wagmi state changes here, AFTER config is created
+         // Use config.subscribe directly as per wagmi v1 documentation
+         config.subscribe(
+           (state) => {
+             console.log('Wagmi state changed:', state);
+             const isConnected = state.status === 'connected';
+             const currentAddress = state.data?.account; // Access account from data object in v1.x
+             const currentChainId = state.data?.chain?.id; // Access chain id from data object in v1.x
+
+             // Update global state
+             userAddress = currentAddress;
+             // --- TODO: Get signer from wagmi/viem if needed for transactions ---
+             // signer = ... ; // You would typically get a signer or wallet client from wagmi/viem config
+
+             // Update UI based on connection status
+             updateWalletUI(isConnected);
+
+             // Load data if connected or clear data if disconnected
+             if (isConnected) {
+                 loadOnchainData(userAddress);
+                  // --- TODO: Check if currentChainId is Base (8453) and alert user if not ---
+                  if (currentChainId !== base.id) {
+                       const t = translations[languageSelect.value] || translations['en'];
+                       alert(`${t.switchNetworkAlert || 'Please switch to the Base network (Chain ID 8453). You are currently on Chain ID'} ${currentChainId}.`);
+                       // --- TODO: Optionally prompt user to switch network using wagmi's switchNetwork ---
+                       // Example: config.switchNetwork({ chainId: base.id }); // Check wagmi for switchNetwork function
+                  }
+             } else {
+                 loadOnchainData(null); // Clear data when disconnected
+             }
+           },
+           {
+             // Optional: filter state changes if needed
+             // selector: (state) => ({ status: state.status, addresses: state.addresses, chainId: state.chainId }), // Adjust selector for v1.x state structure
+           }
+         );
+
+         // Attempt to auto-connect immediately after initialization
+         // This is handled by wagmi.createClient({ autoConnect: true })
+         // but we can also explicitly call config.autoConnect() if needed, though subscribe is usually enough.
+         // config.autoConnect(); // Explicitly attempt auto-connect
+     }
+
+
+    // --- Update Wallet UI (Connect button vs Connected Info) ---
+    function updateWalletUI(isConnected) {
+        if (isConnected) {
+            // Hide connect button, show connected info
+            if (connectWalletBtn) connectWalletBtn.style.display = 'none';
+            if (connectedWalletInfo) connectedWalletInfo.style.display = 'flex';
+             // Hide disconnected settings icon, show connected one
+             if (settingsIconDisconnected) settingsIconDisconnected.style.display = 'none';
+             if (settingsIconConnected) settingsIconConnected.style.display = 'block';
+
+            // Update header display
+            if (headerWalletAddressDisplay && userAddress) {
+                 headerWalletAddressDisplay.textContent = `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+            }
+             // XP and Streak are updated in loadOnchainData
+
+        } else {
+            // Show connect button, hide connected info
+            if (connectWalletBtn) connectWalletBtn.style.display = 'block';
+            if (connectedWalletInfo) connectedWalletInfo.style.display = 'none';
+             // Show disconnected settings icon, hide connected one
+             if (settingsIconDisconnected) settingsIconDisconnected.style.display = 'block';
+             if (settingsIconConnected) settingsIconConnected.style.display = 'none';
+
+            // Reset header display
+             if (headerWalletAddressDisplay) headerWalletAddressDisplay.textContent = '';
+             if (headerXPDisplay) headerXPDisplay.textContent = '0 XP';
+             if (headerStreakDisplay) headerStreakDisplay.textContent = '0'; // Reset streak display
+             if (xpDisplay) xpDisplay.textContent = '0 XP 🔥'; // Reset the old XP badge display
+
+
+        }
+         // Ensure the correct settings icon is clickable - Event listeners are now added in startAppInitialization
+         // if (settingsIconDisconnected) {
+         //     settingsIconDisconnected.onclick = toggleSettings;
+         // }
+         //  if (settingsIconConnected) {
+         //      settingsIconConnected.onclick = toggleSettings;
+         //  }
+    }
+
+
+    // --- Load Onchain Data (mocked until API/contracts are ready) ---
+    // This function will fetch real data using APIs (BaseScan, Zora, Neynar etc.)
+    async function loadOnchainData(address) {
+      console.log(`Loading onchain data for address: ${address || 'Not Connected'}`);
+      // --- TODO: Implement real data fetching using APIs ---
+      // Fetch XP from your smart contract or backend (mocked)
+      const mockXP = address ? Math.floor(Math.random() * 5000) + 1000 : 0; // Random mock XP if connected
+      const mockStreak = address ? Math.floor(Math.random() * 30) : 0; // Random mock Streak if connected
+
+      // Update XP and Streak in Header and Profile
+      if (xpDisplay) xpDisplay.textContent = `${mockXP} XP 🔥`; // Old XP badge (will be hidden when connected)
+      if (headerXPDisplay) headerXPDisplay.textContent = `${mockXP} XP`; // New XP in connected header
+      if (headerStreakDisplay) headerStreakDisplay.textContent = mockStreak; // New Streak in connected header
+      if (profileXPDisplay) profileXPDisplay.textContent = mockXP; // XP in Profile
+
+
+      // Fetch WarpPoints balance from your smart contract (mocked)
+      // --- TODO: Replace with actual call to your WarpAI Token Contract using wagmi/viem ---
+      // Example using viem's publicClient:
+      /*
+      if (address && client && WARPAI_TOKEN_CONTRACT_ADDRESS !== "0xYourWarpAITokenContractAddressHere") {
+          try {
+              // Use client.readContract for view functions
+              const balance = await client.readContract({
+                  address: WARPAI_TOKEN_CONTRACT_ADDRESS,
+                  abi: [{ name: 'balanceOf', type: 'function', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] }], // Minimal ABI for balanceOf
+                  functionName: 'balanceOf',
+                  args: [address],
+              });
+              const formattedBalance = viem.formatUnits(balance, 18); // Assuming 18 decimals
+              const mockWpBalance = parseFloat(formattedBalance).toFixed(2); // Display with 2 decimals
+               if (warpPointsDisplay) warpPointsDisplay.textContent = mockWpBalance;
+               if (rewardsWarpPointsDisplay) rewardsWarpPointsDisplay.textContent = mockWpBalance;
+               if (profileWarpPointsDisplay) profileWarpPointsDisplay.textContent = mockWpBalance;
+          } catch (error) {
+              console.error("Error fetching token balance:", error);
+              // Fallback to mock or display error
+               const mockWpBalance = address ? Math.floor(Math.random() * 10000) : 0;
+               if (warpPointsDisplay) warpPointsDisplay.textContent = mockWpBalance;
+               if (rewardsWarpPointsDisplay) rewardsWarpPointsDisplay.textContent = mockWpBalance;
+               if (profileWarpPointsDisplay) profileWarpPointsDisplay.textContent = mockWpBalance;
+          }
+      } else {
+           const mockWpBalance = address ? Math.floor(Math.random() * 10000) : 0; // Random mock balance if connected
+           if (warpPointsDisplay) warpPointsDisplay.textContent = mockWpBalance;
+           if (rewardsWarpPointsDisplay) rewardsWarpPointsDisplay.textContent = mockWpBalance;
+           if (profileWarpPointsDisplay) profileWarpPointsDisplay.textContent = mockWarpPointsDisplay;
+      }
+      */
+      // Current mock implementation:
+      const mockWpBalance = address ? Math.floor(Math.random() * 10000) : 0; // Random mock balance if connected
+      if (warpPointsDisplay) {
+           warpPointsDisplay.textContent = mockWpBalance; // Update WP in Overview
+      }
+       if (rewardsWarpPointsDisplay) {
+           rewardsWarpPointsDisplay.textContent = mockWpBalance; // Update WP in Rewards
+       }
+        if (profileWarpPointsDisplay) {
+            profileWarpPointsDisplay.textContent = mockWpBalance; // Update WP in Profile
+        }
+
+
+      // Update wallet address display in Profile section
+      if (profileWalletAddressDisplay) {
+          profileWalletAddressDisplay.textContent = address ? address : 'Not Connected';
+      }
+
+      // Mock Premium Status (replace with actual check against your contract/backend)
+      const isPremium = address ? Math.random() > 0.5 : false; // 50% chance of being premium if connected
+      if (premiumStatusDisplay) {
+          premiumStatusDisplay.textContent = isPremium ? 'Active' : 'Inactive';
+          premiumStatusDisplay.style.color = isPremium ? 'var(--primary)' : 'var(--error)'; // Use CSS variables
+      }
+
+      // --- TODO: Implement real data fetching for these sections using APIs (BaseScan, Zora, Neynar etc.) ---
+      // This is a major next step after WalletConnect is stable.
+      // Update Gas Fees Paid, Successful Mints/Trades, Total Volume, Most Active Day in the Overview card
+      // Update Earnings breakdown (Today, Last 7 Days, Last 30 Days)
+      // Fetch and display real activity feed data on the 'Track' tab
+      // Fetch and display real leaderboard data on the 'Leaderboard' tab
+      // Fetch and display saved addresses activity (after adding real tracking logic)
+       // Fetch and display Warpcast profile picture (requires Farcaster API like Neynar)
+        if (profileImagePlaceholder) {
+            // --- TODO: Fetch Warpcast profile image URL based on wallet address using Neynar API ---
+            // For now, keep the icon placeholder
+             // Example: profileImagePlaceholder.innerHTML = `<img src="YOUR_WARPCAST_IMAGE_URL" alt="Profile Image">`;
+        }
+
+        // --- TODO: Add loading indicators while fetching data ---
+        // As suggested in the "X GROK" feedback.
+    }
+
+     // --- Load Rewards Data (mocked for now) ---
+     // This function will fetch real data for rewards like daily claim status, streak, badges etc.
+     function loadRewardsData() {
+         console.log('Loading rewards data...');
+         // --- TODO: Fetch real rewards data from backend/smart contracts ---
+         // loadOnchainData() is already called on wallet connect and updates basic WP displays.
+         // Add logic here to display streak, badges, completed challenges etc.
+     }
+
+      // --- Load Profile Data (mocked for now) ---
+      // This function will fetch more detailed profile data if needed
+     function loadProfileData() {
+         console.log('Loading profile data...');
+         // --- TODO: Fetch more detailed profile data from backend/APIs ---
+         // loadOnchainData() is already called on wallet connect and updates basic profile info.
+         // Add logic to display more profile-specific data here if needed (e.g., transaction count, average gas fee saved).
+         // The saved addresses list is rendered by renderFavorites().
+     }
+
+      // --- Load Settings Data (from localStorage) ---
+      // Loads saved preferences like API key, theme, and language
+      function loadSettings() {
+          console.log('Loading settings...');
+          // Load saved API key on startup
+          const savedApiKey = localStorage.getItem('owlracleApiKey');
+          if (owlracleApiKeyInput && savedApiKey) {
+              owlracleApiKeyInput.value = savedApiKey;
+              owlracleApiKey = savedApiKey; // Update global variable
+          } else {
+              // If no key in localStorage, populate input with the default/hardcoded key
+              if (owlracleApiKeyInput) {
+                  owlracleApiKeyInput.value = owlracleApiKey;
+              }
+          }
+
+
+           // Load saved theme preference
+           const savedTheme = localStorage.getItem('theme');
+           if (themeToggle && savedTheme) {
+               themeToggle.value = savedTheme;
+               document.body.setAttribute('data-theme', savedTheme); // Apply saved theme
+                // Update WalletConnect modal theme if it's already initialized
+                // Note: WalletConnectModal.setThemeMode is used here
+                if (typeof WalletConnectModal !== 'undefined' && WalletConnectModal.setThemeMode) {
+                     WalletConnectModal.setThemeMode(savedTheme); // Use savedTheme here
+                }
+           } else {
+               // Set default theme if none saved
+               document.body.setAttribute('data-theme', 'dark');
+               if (themeToggle) themeToggle.value = 'dark';
+                if (typeof WalletConnectModal !== 'undefined' && WalletConnectModal.setThemeMode) {
+                     WalletConnectModal.setThemeMode('dark');
+                 }
+           }
+
+           // Load saved language preference
+           const savedLang = localStorage.getItem('language');
+           if (languageSelect && savedLang) {
+               languageSelect.value = savedLang;
+               updateLanguage(savedLang); // Apply saved language
+           } else {
+               // Set default language if none saved
+               languageSelect.value = 'en';
+               updateLanguage('en'); // Apply default English
+           }
+      }
+
+
+    // --- Real-time Gas Fee (using Owlracle API - requires API key) ---
+    async function getGas() {
+      try {
+        // Use API key from input if available, otherwise use the hardcoded key
+        const currentApiKey = owlracleApiKeyInput.value.trim() || owlracleApiKey;
+        // --- TODO: Consider adding error handling for invalid API key ---
+        const response = await fetch(`https://api.owlracle.info/v4/base/gas?apikey=${currentApiKey}`); // Use API key
+        if (!response.ok) {
+            // Handle API errors more gracefully
+            console.warn(`Gas API-fel (${response.status}): ${response.statusText}, använder standardvärde.`);
+             // Return a fallback structure that matches expected properties in sendTransaction
+            return { speeds: [{ estimatedFee: 20, maxFeePerGas: 20, maxPriorityFeePerGas: 2 }] };
+        }
+        const data = await response.json();
+        // Owlracle API returns speeds, we take 'standard' (index 1) - assuming index 1 is standard
+         // Check if data structure is as expected and index 1 exists
+        if (!data || !data.speeds || !data.speeds[1] || data.speeds[1].estimatedFee === undefined) {
+             console.error("Invalid data structure from Gas API");
+             // Return a fallback structure on unexpected data
+             return { speeds: [{ estimatedFee: 20, maxFeePerGas: 20, maxPriorityFeePerGas: 2 }] };
+        }
+        const avgGas = data.speeds[1].estimatedFee;
+         const maxFeePerGas = data.speeds[1].maxFeePerGas; // Get maxFeePerGas
+         const maxPriorityFeePerGas = data.speeds[1].maxPriorityFeePerGas; // Get maxPriorityFeePerGas
+
+
+        // --- TODO: Fetch current ETH/USD price to calculate dollar cost ---
+        // For now, use a static mock price
+        const mockEthUsdPrice = 3500; // Example static price
+        const mockGasCostUsd = (avgGas * 21000 / 1e9) * mockEthUsdPrice; // Simple calculation (21000 gas limit for standard tx)
+
+        // Update UI elements
+        if (gasValue && gasProgress) {
+             gasValue.textContent = `${avgGas.toFixed(1)} Gwei ($${mockGasCostUsd.toFixed(2)})`; // Display Gwei and mock dollar cost
+
+             // Cap width at max 100% for visualization (assuming max gas for visualization is 100 Gwei)
+             const maxGasForVisualization = 100; // Define a max value for the progress bar
+             const gasWidth = Math.min((avgGas / maxGasForVisualization) * 100, 100); // Calculate percentage, cap at 100%
+             gasProgress.style.setProperty('--gas-width', `${gasWidth}%`);
+
+             // Update color based on gas level (Example thresholds - adjust as needed)
+             gasProgress.classList.remove('low', 'medium', 'high', 'very-high'); // Clear previous classes
+             if (avgGas < 20) { // Example: Low gas below 20 Gwei
+                 gasProgress.classList.add('low');
+             } else if (avgGas >= 20 && avgGas < 50) { // Example: Medium gas 20-50 Gwei
+                 gasProgress.classList.add('medium');
+             } else if (avgGas >= 50 && avgGas < 100) { // Example: High gas 50-100 Gwei
+                 gasProgress.classList.add('high');
+             } else { // Example: Very High gas over 100 Gwei
+                 gasProgress.classList.add('very-high');
+             }
+        }
+
+         // Remove any previous error message if successful
+         const gasCard = document.querySelector('.gas-card');
+         const errorMessage = gasCard ? gasCard.querySelector('.gas-error-message') : null;
+         if (errorMessage) {
+             errorMessage.remove();
+         }
+
+         // Return the relevant gas data including maxFee and maxPriorityFee
+         return { estimatedFee: avgGas, maxFeePerGas: maxFeePerGas, maxPriorityFeePerGas: maxPriorityFeePerGas };
+
+
+      } catch (error) {
+        console.error("GAS API Error:", error);
+         // Display error in UI
+         if (gasValue && gasProgress) {
+            gasValue.textContent = "Error";
+            gasProgress.style.setProperty('--gas-width', "0%");
+            gasProgress.classList.remove('low', 'medium', 'high', 'very-high');
+            // Optionally display a more specific error message near the gas value
+             const gasCard = document.querySelector('.gas-card');
+             if (gasCard && !gasCard.querySelector('.gas-error-message')) {
+                 const errorMessage = document.createElement('p');
+                 errorMessage.classList.add('gas-error-message');
+                 errorMessage.style.cssText = 'font-size: 0.6rem; color: var(--error); text-align: center; margin-top: 0.3rem;'; // Use CSS variable and adjusted margin/font size
+                 errorMessage.textContent = 'Could not fetch gas data. Check API key or try again later.'; // Add translation later
+                 gasCard.appendChild(errorMessage);
+             }
+         }
+         // Return a fallback structure on any error
+         return { estimatedFee: 20, maxFeePerGas: 20, maxPriorityFeePerGas: 2 };
+         // --- TODO: Implement a more robust error message display for the user ---
+      }
+    }
+
+    // Update gas price initially and then regularly
+    // Initial call is now in startAppInitialization
+    // getGas(); // Initial call moved
+    setInterval(getGas, 30000); // Update every 30 seconds
+
+
+    // --- Activity Feed (Mocked for now) ---
+    // These functions will be updated to fetch real activity data using APIs (BaseScan, Zora, etc.)
+
+    // Mock data for user's activity
+    const myActivities = [
+        { type: 'mint', user: 'You', details: 'Minted NFT #456 on Zora' },
+        { type: 'transfer', user: 'You', details: 'Transferred 0.1 ETH to 0xabc...' },
+        { type: 'claim', user: 'You', details: 'Claimed daily WarpPoints' },
+    ];
+
+    // Mock data for favorite addresses activity
+    const favoritesActivities = [
+        { type: 'mint', user: 'vitalik.eth', details: 'Minted NFT #789' },
+        { type: 'transfer', user: 'satoshi.eth', details: 'Transferred 5 ETH' },
+        { type: 'trade', user: 'jesse pollak', details: 'Posted "zora2.0Getrekt" @ zora.co [TRADE TOKEN]' }, // Added example from user input
+        { type: 'mint', user: 'user123', details: 'Minted a Zorb' },
+    ];
+
+
+    // Function to render user's activity feed
+    function renderMyActivityFeed() {
+        console.log('Rendering my activity feed...');
+      if (myActivityListContainer) {
+          // --- TODO: Replace with real data fetched from APIs for the connected wallet ---
+           myActivityListContainer.innerHTML = myActivities.map(activity => `
+             <div class="feed-item ${activity.type}">
+               <div class="feed-icon">${activity.type === 'mint' ? '🖼️' : activity.type === 'transfer' ? '💸' : activity.type === 'claim' ? '✅' : activity.type === 'trade' ? '💱' : '📜'}</div>
+               <div class="feed-content">
+                 <strong>${activity.user}</strong> ${activity.details}
+               </div>
+             </div>
+           `).join('');
+           if (myActivities.length === 0) {
+               const t = translations[languageSelect.value] || translations['en'];
+               myActivityListContainer.innerHTML = `<p style="text-align: center; color: #aaa;">${t.noActivityFound}</p>`; // Message if no activity
+           }
+           // --- TODO: Add loading indicator while fetching ---
+      }
+    }
+
+     // Function to render favorite addresses activity feed
+    function renderFavoritesActivityFeed() {
+        console.log('Rendering favorites activity feed...');
+      if (favoritesActivityListContainer) {
+          // --- TODO: Fetch activity data for each saved address using APIs ---
+          // This will require iterating through the saved addresses and making API calls
+           favoritesActivityListContainer.innerHTML = favoritesActivities.map(activity => `
+             <div class="feed-item ${activity.type}">
+               <div class="feed-icon">${activity.type === 'mint' ? '🖼️' : activity.type === 'transfer' ? '💸' : activity.type === 'claim' ? '✅' : activity.type === 'trade' ? '💱' : '📜'}</div>
+               <div class="feed-content">
+                 <strong>${activity.user}</strong> ${activity.details}
+               </div>
+             </div>
+           `).join('');
+           if (favoritesActivities.length === 0) {
+               const t = translations[languageSelect.value] || translations['en'];
+               favoritesActivityListContainer.innerHTML = `<p style="text-align: center; color: #aaa;">${t.noActivityFound}</p>`; // Message if no activity
+           }
+            // --- TODO: Add loading indicator while fetching ---
+      }
+    }
+
+
+    // --- Language Handling ---
+    // Translations object (can be expanded)
+    const translations = {
+      en: {
+        // Add English translations here
+        connectWallet: "Connect Wallet",
+        gasTitle: "Base Gas Fee",
+        gasLabels: ["Low", "Avg", "High"],
+        earningsTitle: "Earnings",
+        profitLabel: "Profit",
+        feesLabel: "Fees",
+        warpPointsTitle: "WarpPoints",
+        buyWP: "Buy WP",
+        rewardsTitle: "My Rewards", // This will be split into multiple reward card titles
+        myRewardsCardTitle: "🏆 My Rewards", // New title for the main rewards card
+        premiumBenefitsCardTitle: "✨ Premium Benefits", // New title
+        challengesCardTitle: "🎯 Challenges", // New title
+        claimableCardTitle: "🎁 Claimable", // New title
+        claimDaily: "Claim Daily Bonus",
+        premiumBenefitsTitle: "Premium Benefits", // Old title, keeping for now, replaced by card title
+        buyPremium: "Buy Premium - 0.009 ETH",
+        trackTitle: "Latest Onchain Activity", // This will be split into two titles now
+        myActivityTitle: "📜 My Latest Onchain Activity", // New title for user's activity
+        favoritesActivityTitle: "⭐ Favorite Addresses Activity", // New title for favorites activity
+        profileTitle: "My Profile",
+        savedAddressesTitle: "Saved Addresses",
+        addAddressPlaceholder: "Add address...",
+        addButton: "Add",
+        inviteTitle: "Invite Friends",
+        shareCode: "Share Code",
+        settingsTitle: "Settings",
+        languageLabel: "Language:",
+        owlracleApiKeyLabel: "Owlracle API Key:",
+         themeLabel: "Theme:", // New translation
+         darkMode: "Dark Mode", // New translation
+         lightMode: "Light Mode", // New translation
+         yourOnchainOverviewTitle: "📊 Your Onchain Overview", // New translation
+         onchainOverviewText: "This central area will display your key onchain metrics and insights.", // New translation
+         onchainOverviewPlaceholder: "[Placeholder for Chart/Key Data Visualization]", // New translation
+         onchainOverviewExplanation: "Real-time data and detailed analytics will appear here. (Stats are mock data)", // Updated explanation
+         rewardsChallengesTitle: "Challenges & Trackers", // Old title, keeping for now, replaced by card title
+         rewardsChallengesText: "Look out for Daily/Weekly Challenges and your personal Fee Saving Tracker coming soon!", // New translation
+         gasExplanation: "Displays current gas fee on the Base network.", // New translation
+         wpExplanation: "Earn WarpPoints through onchain activity.", // New translation
+         earningsExplanation: "Mock data - real-time tracking coming soon.", // New translation
+         trackExplanation: "Displays recent transactions and mints.", // This will be split
+         myActivityExplanation: "Recent transactions and mints from your connected wallet.", // New explanation
+         favoritesActivityExplanation: "Latest activity from your saved addresses.", // New explanation
+         addressesExplanation: "Add addresses to track here.", // New translation
+         inviteExplanation: "Mock data - real invite logic coming soon.", // New translation
+          gasFeesPaidTitle: "Gas Fees Paid (30D)", // Updated stat title
+          successfulMintsTradesTitle: "Successful Mints/Trades (30D)", // Updated stat title
+          totalVolumeTitle: "Total Volume (30D)", // Updated stat title
+          mostActiveDayTitle: "Most Active Day (30D)", // Updated stat title
+           leaderboardTitle: "🏆 Leaderboard", // New translation
+            leaderboardExplanation: "Leaderboard based on WarpPoints (mock data).", // New translation
+            noSavedAddresses: "No addresses saved yet.", // New translation
+             noActivityFound: "No recent activity found.", // New translation
+             walletConnectError: "Something went wrong during wallet connection: ", // New translation
+             walletRejected: "Wallet connection rejected by the user.", // New translation
+             installWallet: "Please install a Web3-compatible wallet like MetaMask!", // New translation
+             premiumPurchaseFailed: "Premium purchase failed: ", // New translation
+             premiumPurchased: "Premium purchased! TX: ", // New translation
+             connectWalletFirst: "Please connect wallet first to buy Premium!", // New translation
+             wpNotImplemented: "WarpPoints purchase function is not implemented yet.", // New translation
+             dailyBonusNotImplemented: "Daily bonus claim function is not implemented yet.", // New translation
+             inviteCodeCopied: "Invite code copied to clipboard!", // New translation
+             couldNotCopy: "Could not copy code. Please copy manually: ", // New translation
+             enterAddress: "Please enter an address.", // New translation
+             leaderboardDataNotAvailable: "Leaderboard data not available.", // New translation
+             howToEarnWP: "Earn WarpPoints by being active onchain (mints, trades, etc.)!", // New leaderboard explanation
+             linkedWalletsTitle: "Linked Wallets", // New translation
+             linkedWalletsExplanation: "Link multiple wallets to consolidate your onchain activity and earn bonuses!", // New translation
+             myBadgesTitle: "🏅 My Badges", // New translation
+             myBadgesExplanation: "Earn badges for your onchain achievements!", // New translation
+             buyInvitesTitle: "💸 Buy Invites with WarpAI", // New translation - NOTE: This title is now unused in HTML but kept in translations for completeness.
+             buyInvitesExplanation: "Purchase additional invites using your WarpAI tokens!", // New translation - NOTE: This explanation is now unused in HTML but kept in translations for completeness.
+             gasAnalyticsTitle: "📈 Gas Analytics", // New translation
+             gasAnalyticsExplanation: "View historical gas price data (coming soon).", // New translation
+             // New Rewards specific translations
+             claimDailyExplanation: "Claim your daily reward!",
+             premiumBenefitsExplanation: "Unlock exclusive perks with Premium!",
+             challengesExplanation: "Complete challenges to earn more!",
+             claimableExplanation: "Your earned rewards will appear here.",
+             challengesComingSoon: "Daily and Weekly challenges coming soon.",
+             switchNetworkAlert: "Please switch to the Base network (Chain ID 8453). You are currently on Chain ID", // New translation for network switch alert
+             myRankTitle: "📊 My Rank", // Added missing translation
+             leaderboardMetricsTitle: "📈 Leaderboard Metrics" // Added missing translation
+
+      },
+      sv: {
+        // Swedish translations
+        connectWallet: "Anslut Plånbok",
+        gasTitle: "Base Gasavgift",
+        gasLabels: ["Låg", "Medel", "Hög"],
+        earningsTitle: "Intäkter",
+        profitLabel: "Vinst",
+        feesLabel: "Avgifter",
+        warpPointsTitle: "WarpPoints",
+        buyWP: "Köp WP",
+        rewardsTitle: "Mina Belöningar", // This will be split
+        myRewardsCardTitle: "🏆 Mina Belöningar", // New title
+        premiumBenefitsCardTitle: "✨ Premium Förmåner", // New title
+        challengesCardTitle: "🎯 Utmaningar", // New title
+        claimableCardTitle: "🎁 Utkrävbart", // New title
+        claimDaily: "Hämta Daglig Bonus",
+        premiumBenefitsTitle: "Premium Förmåner", // Old title
+        buyPremium: "Köp Premium - 0.009 ETH",
+        trackTitle: "Senaste Onchain Aktivitet", // This will be split
+        myActivityTitle: "📜 Min Senaste Onchain Aktivitet", // New title
+        favoritesActivityTitle: "⭐ Favorit Adressers Aktivitet", // New title
+        profileTitle: "Min Profil",
+        savedAddressesTitle: "Sparade Adresser",
+        addAddressPlaceholder: "Lägg till adress...",
+        addButton: "Lägg till",
+        inviteTitle: "Bjud in Vänner",
+        shareCode: "Dela Kod",
+        settingsTitle: "Inställningar",
+        languageLabel: "Språk:",
+        owlracleApiKeyLabel: "Owlracle API-nyckel:",
+         themeLabel: "Tema:", // New translation
+         darkMode: "Mörkt Läge", // New translation
+         lightMode: "Ljust Läge", // New translation
+         yourOnchainOverviewTitle: "📊 Din Onchain Översikt", // New translation
+         onchainOverviewText: "Detta centrala område kommer att visa dina viktigaste onchain-mätvärden och insikter.", // New translation
+         onchainOverviewPlaceholder: "[Platshållare för Diagram/Viktig Data]", // New translation
+         onchainOverviewExplanation: "Realtidsdata och detaljerad analys visas här. (Statistik är mockad data)", // Updated explanation
+         rewardsChallengesTitle: "Utmaningar & Spårare", // Old title
+         rewardsChallengesText: "Håll utkik efter Dagliga/Veckovisa Utmaningar och din personliga Avgiftsspårare snart!", // New translation
+         gasExplanation: "Visar aktuell gasavgift på Base nätverket.", // New translation
+         wpExplanation: "Tjäna WarpPoints genom aktivitet onchain.", // New translation
+         earningsExplanation: "Mockad data - realtidsspårning kommer snart.", // New translation
+         trackExplanation: "Visar nyliga transaktioner och mints.", // This will be split
+         myActivityExplanation: "Nyliga transaktioner och mints från din anslutna plånbok.", // New explanation
+         favoritesActivityExplanation: "Senaste aktivitet från dina sparade adresser.", // New explanation
+         addressesExplanation: "Lägg till adresser att spåra här.", // New translation
+         inviteExplanation: "Mockad data - real inbjudningslogik kommer snart.", // New translation
+          gasFeesPaidTitle: "Betalda Gasavgifter (30D)", // Updated stat title
+          successfulMintsTradesTitle: "Lyckade Mints/Trades (30D)", // Updated stat title
+          totalVolumeTitle: "Total Volym (30D)", // Updated stat title
+          mostActiveDayTitle: "Mest Aktiva Dag (30D)", // Updated stat title
+           leaderboardTitle: "🏆 Topplista", // New translation
+            leaderboardExplanation: "Topplista baserad på WarpPoints (mockad data).", // New translation
+            noSavedAddresses: "Inga adresser sparade än.", // New translation
+             noActivityFound: "Ingen nylig aktivitet hittades.", // New translation
+             walletConnectError: "Något gick fel vid anslutning av plånbok: ", // New translation
+             walletRejected: "Plånboksanslutning nekades av användaren.", // New translation
+             installWallet: "Installera en Web3-kompatibel plånbok som MetaMask!", // New translation
+             premiumPurchaseFailed: "Premiumköp misslyckades: ", // New translation
+             premiumPurchased: "Premium köpt! TX: ", // New translation
+             connectWalletFirst: "Anslut plånbok först för att köpa Premium!", // New translation
+             wpNotImplemented: "Funktionen för att köpa WarpPoints är inte implementerad än.", // New translation
+             dailyBonusNotImplemented: "Funktionen för daglig bonus är inte implementerad än.", // New translation
+             inviteCodeCopied: "Inbjudningskod kopierad!", // New translation
+             couldNotCopy: "Kunde inte kopiera kod. Kopiera manuellt: ", // New translation
+             enterAddress: "Vänligen ange en adress.", // New translation
+             leaderboardDataNotAvailable: "Topplistadata inte tillgänglig.", // New translation
+             howToEarnWP: "Tjäna WarpPoints genom att vara aktiv onchain (mints, trades, etc.)!", // New leaderboard explanation
+             linkedWalletsTitle: "Länkade Plånböcker", // New translation
+             linkedWalletsExplanation: "Länka flera plånböcker för att konsolidera din onchain-aktivitet och tjäna bonusar!", // New translation
+             myBadgesTitle: "🏅 Mina Badges", // New translation
+             myBadgesExplanation: "Tjäna badges för dina onchain-prestationer!", // New translation
+             buyInvitesTitle: "💸 Köp Invites med WarpAI", // New translation - NOTE: This title is now unused in HTML but kept in translations for completeness.
+             buyInvitesExplanation: "Köp ytterligare invites med dina WarpAI tokens!", // New translation - NOTE: This explanation is now unused in HTML but kept in translations for completeness.
+             gasAnalyticsTitle: "📈 Gas Analys", // New translation
+             gasAnalyticsExplanation: "View historical gas price data (coming soon).", // New translation
+             // New Rewards specific translations
+             claimDailyExplanation: "Hämta din dagliga belöning!",
+             premiumBenefitsExplanation: "Lås upp exklusiva förmåner med Premium!",
+             challengesExplanation: "Slutför utmaningar för att tjäna mer!",
+             claimableExplanation: "Dina intjänades belöningar visas här.",
+             challengesComingSoon: "Dagliga och Veckovisa utmaningar kommer snart.",
+             switchNetworkAlert: "Vänligen byt till Base-nätverket (Chain ID 8453). Du är för närvarande på Chain ID", // New translation for network switch alert
+             myRankTitle: "📊 Min Rank", // Added missing translation
+             leaderboardMetricsTitle: "📈 Topplista Mätvärden" // Added missing translation
+      }
+    };
+
+    // Function to update language based on selected language code
+    function updateLanguage(lang) {
+      const t = translations[lang] || translations['en']; // Fallback to English if translation not found
+
+      // Update texts using element IDs/classes
+      // Note: Header title is handled separately in HTML structure now
+      if (connectWalletBtn) connectWalletBtn.textContent = t.connectWallet;
+      if (document.querySelector('.gas-card h2')) document.querySelector('.gas-card h2').textContent = t.gasTitle;
+      if (document.querySelector('.points-card h2')) document.querySelector('.points-card h2').textContent = t.warpPointsTitle;
+      if (buyWPBtn) buyWPBtn.textContent = t.buyWP;
+      if (document.querySelector('.earnings-card h2')) document.querySelector('.earnings-card h2').textContent = t.earningsTitle;
+      if (document.querySelector('.earning.positive .label')) document.querySelector('.earning.positive .label').textContent = t.profitLabel;
+      if (document.querySelector('.earning.negative .label')) document.querySelector('.earning.negative .label').textContent = t.feesLabel;
+      // Rewards page titles (updated)
+      if (document.querySelector('#rewards .rewards-container .card:nth-of-type(1) h2')) document.querySelector('#rewards .rewards-container .card:nth-of-type(1) h2').textContent = t.myRewardsCardTitle;
+      if (document.querySelector('#rewards .rewards-container .card:nth-of-type(2) h2')) document.querySelector('#rewards .rewards-container .card:nth-of-type(2) h2').textContent = t.premiumBenefitsCardTitle;
+      if (document.querySelector('#rewards .rewards-container .card:nth-of-type(3) h2')) document.querySelector('#rewards .rewards-container .card:nth-of-type(3) h2').textContent = t.challengesCardTitle;
+      if (document.querySelector('#rewards .rewards-container .card:nth-of-type(4) h2')) document.querySelector('#rewards .rewards-container .card:nth-of-type(4) h2').textContent = t.claimableCardTitle;
+
+
+      if (claimDailyBtn) claimDailyBtn.textContent = t.claimDaily;
+      if (document.querySelector('.rewards-card h3')) document.querySelector('.rewards-card h3').textContent = t.premiumBenefitsTitle; // This might be removed/changed with new card structure
+      if (buyPremiumBtn) buyPremiumBtn.textContent = t.buyPremium;
+      // Track page titles (updated)
+      if (document.querySelector('.my-activity-card h2')) document.querySelector('.my-activity-card h2').textContent = t.myActivityTitle;
+      if (document.querySelector('.favorites-activity-card h2')) document.querySelector('.favorites-activity-card h2').textContent = t.favoritesActivityTitle;
+      // Track page other cards (updated)
+      if (document.querySelector('#track .card h2:nth-of-type(2)')) document.querySelector('#track .card h2:nth-of-type(2)').textContent = t.gasAnalyticsTitle; // Assuming Gas Analytics is the second card after the track-container
+
+
+      if (document.querySelector('.profile-card h2')) document.querySelector('.profile-card h2').textContent = t.profileTitle;
+      if (document.querySelector('.profile-card h3')) document.querySelector('.profile-card h3').textContent = t.savedAddressesTitle; // Title for saved addresses
+       // Profile page other sections (updated)
+       if (document.querySelector('#profile .card div:nth-of-type(2) h3')) document.querySelector('#profile .card div:nth-of-type(2) h3').textContent = t.linkedWalletsTitle; // Assuming Linked Wallets is the second h3
+       if (document.querySelector('#profile .card:nth-of-type(2) h2')) document.querySelector('#profile .card:nth-of-type(2) h2').textContent = t.myBadgesTitle; // Assuming My Badges is the second h2
+
+
+      if (newFavoriteAddressInput) newFavoriteAddressInput.placeholder = t.addAddressPlaceholder;
+      if (addFavoriteBtn) addFavoriteBtn.textContent = t.addButton;
+      if (document.querySelector('.invite-card h2')) document.querySelector('.invite-card h2').textContent = t.inviteTitle;
+      if (document.querySelector('.invite-card .share-btn')) document.querySelector('.invite-card .share-btn').innerHTML = `<i class="fas fa-share-alt"></i> ${t.shareCode}`; // Keep icon
+       // Invite page other sections (updated)
+       // The "Buy Invites" section was removed, so no translation update needed here.
+
+
+      if (document.querySelector('.settings-card h2')) document.querySelector('.settings-card h2').textContent = t.settingsTitle;
+      if (document.querySelector('.settings-option label[for="languageSelect"]')) document.querySelector('.settings-option label[for="languageSelect"]').textContent = t.languageLabel;
+       if (document.querySelector('.settings-option label[for="themeToggle"]')) document.querySelector('.settings-option label[for="themeToggle"]').textContent = t.themeLabel; // New theme label
+       if (document.querySelector('.settings-option label[for="owlracleApiKeyInput"]')) document.querySelector('.settings-option label[for="owlracleApiKeyInput"]').textContent = t.owlracleApiKeyLabel;
+        if (document.querySelector('.leaderboard-card h2')) document.querySelector('.leaderboard-card h2').textContent = t.leaderboardTitle; // New leaderboard title
+        // Leaderboard page other sections (updated)
+        if (document.querySelector('.my-rank-card h2')) document.querySelector('.my-rank-card h2').textContent = t.myRankTitle || '📊 My Rank'; // Assuming My Rank is the h2 in my-rank-card
+        if (document.querySelector('#leaderboard .card:nth-of-type(2) h2')) document.querySelector('#leaderboard .card:nth-of-type(2) h2').textContent = t.leaderboardMetricsTitle || '📈 Leaderboard Metrics'; // Assuming Leaderboard Metrics is the second card after the track-container
+
+
+       // Update gas labels (Low/Avg/High)
+      const gasLabels = document.querySelectorAll('.gas-labels span');
+      if(gasLabels.length === 3) {
+          gasLabels[0].textContent = t.gasLabels[0];
+          gasLabels[1].textContent = t.gasLabels[1];
+          gasLabels[2].textContent = t.gasLabels[2];
+      }
+
+       // Update main activity card texts
+       if (document.querySelector('.main-activity-card h2')) document.querySelector('.main-activity-card h2').textContent = t.yourOnchainOverviewTitle;
+       // Update stat box titles
+       const statBoxTitles = document.querySelectorAll('.stat-box h3');
+       if (statBoxTitles.length >= 4) { // Ensure there are enough stat boxes before updating
+           statBoxTitles[0].textContent = t.gasFeesPaidTitle;
+           statBoxTitles[1].textContent = t.successfulMintsTradesTitle;
+           statBoxTitles[2].textContent = t.totalVolumeTitle;
+           statBoxTitles[3].textContent = t.mostActiveDayTitle;
+       }
+
+       if (document.querySelector('.main-activity-card p:last-of-type')) document.querySelector('.main-activity-card p:last-of-type').textContent = t.onchainOverviewExplanation;
+
+
+       // Update rewards challenges texts (updated with new card structure)
+        if (document.querySelector('#rewards .rewards-container .card:nth-of-type(3) p:last-of-type')) document.querySelector('#rewards .rewards-container .card:nth-of-type(3) p:last-of-type').textContent = t.challengesComingSoon;
+
+
+        // Update explanation texts below cards
+        if (document.querySelector('.gas-card p')) document.querySelector('.gas-card p').textContent = t.gasExplanation;
+        if (document.querySelector('.points-card p')) document.querySelector('.points-card p').textContent = t.wpExplanation;
+        if (document.querySelector('.earnings-card p:last-of-type')) document.querySelector('.earnings-card p:last-of-type').textContent = t.earningsExplanation; // Target last p in earnings card
+        // Track page explanations (updated)
+        if (document.querySelector('.my-activity-card p:first-of-type')) document.querySelector('.my-activity-card p:first-of-type').textContent = t.myActivityExplanation;
+        if (document.querySelector('.favorites-activity-card p:first-of-type')) document.querySelector('.favorites-activity-card p:first-of-type').textContent = t.favoritesActivityExplanation;
+        // Profile page explanations (updated)
+        if (document.querySelector('.profile-card .favorites-list + p')) document.querySelector('.profile-card .favorites-list + p').textContent = t.addressesExplanation; // Explanation below favorites list
+        if (document.querySelector('#profile .card div:nth-of-type(2) p:first-of-type')) document.querySelector('#profile .card div:nth-of-type(2) p:first-of-type').textContent = t.linkedWalletsExplanation; // Explanation below Linked Wallets title
+        if (document.querySelector('#profile .card:nth-of-type(2) p:first-of-type')) document.querySelector('#profile .card:nth-of-type(2) p:first-of-type').textContent = t.myBadgesExplanation; // Explanation below My Badges title
+        // Invite page explanations (updated)
+        if (document.querySelector('.invite-card p:last-of-type')) document.querySelector('.invite-card p:last-of-type').textContent = t.inviteExplanation; // Target last p in invite card
+        // Settings page explanations (updated)
+         if (document.querySelector('.settings-option p')) document.querySelector('.settings-option p').textContent = t.owlracleApiKeyLabel; // Assuming this is the only p in settings options
+        // Leaderboard page explanations (updated)
+        if (document.querySelector('.leaderboard-card p:last-of-type')) document.querySelector('.leaderboard-card p:last-of-type').textContent = t.leaderboardExplanation; // Target last p in leaderboard card
+        if (document.querySelector('.my-rank-card p:last-of-type')) document.querySelector('.my-rank-card p:last-of-type').textContent = t.myRankExplanation || '(Kräver plånboksanslutning)'; // Explanation below My Rank
+        if (document.querySelector('#leaderboard .card:nth-of-type(2) p:first-of-type')) document.querySelector('#leaderboard .card:nth-of-type(2) p:first-of-type').textContent = t.leaderboardMetricsExplanation || 'Visa topplistor för olika mätvärden (kommer snart).'; // Explanation below Leaderboard Metrics title
+
+
+       // Update footer tab texts
+       const footerTabs = document.querySelectorAll('.footer-nav button span');
+       if(footerTabs.length === 6) { // Ensure we have the correct number of footer tabs
+           footerTabs[0].textContent = "Home"; // Keeping Home in English as it's a common term
+           footerTabs[1].textContent = "Track"; // Keeping Track in English
+           footerTabs[2].textContent = t.leaderboardTitle.replace('🏆 ', ''); // Use translated title, remove icon
+           footerTabs[3].textContent = t.rewardsTitle.replace('🏆 ', ''); // Use translated title, remove icon
+           footerTabs[4].textContent = t.profileTitle.replace('👤 ', ''); // Use translated title, remove icon
+           footerTabs[5].textContent = t.inviteTitle.replace('💌 ', ''); // Use translated title, remove icon
+       }
+
+       // Update select option texts for theme
+       if (themeToggle) {
+           const options = themeToggle.options;
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === 'dark') {
+                    options[i].textContent = t.darkMode;
+                } else if (options[i].value === 'light') {
+                    options[i].textContent = t.lightMode;
+                }
+            }
+       }
+
+        // Update placeholder for Owlracle API key input
+        if (owlracleApiKeyInput) {
+            owlracleApiKeyInput.placeholder = t.owlracleApiKeyLabel; // Using the label as placeholder for consistency
+        }
+
+         // Update messages for empty lists
+         if (favoritesListContainer && favoritesListContainer.children.length === 0) {
+             favoritesListContainer.innerHTML = `<p style="text-align: center; color: #aaa; font-size: 0.75rem;">${t.noSavedAddresses}</p>`;
+         }
+         // Update activity feed empty messages (handled in render functions now)
+
+
+    }
+
+
+    // --- Tab Switching Logic ---
+    function showTab(tabId) {
+      // Hide all tab content
+      document.querySelectorAll('.tab-content').forEach(section => {
+        section.classList.remove('active');
+      });
+
+      // Show the selected tab content
+      const activeTabContent = document.getElementById(tabId);
+      if (activeTabContent) {
+        activeTabContent.classList.add('active');
+      }
+
+      // Update active class on footer buttons
+      document.querySelectorAll('.footer-tab').forEach(button => {
+        button.classList.remove('active');
+      });
+      const activeFooterButton = document.querySelector(`.footer-tab[data-tab="${tabId}"]`);
+      if (activeFooterButton) {
+        activeFooterButton.classList.add('active');
+      }
+
+       // Load data specific to the tab if needed (optional, some data might be loaded on startup)
+       if (tabId === 'rewards') {
+           loadRewardsData();
+       } else if (tabId === 'profile') {
+           loadProfileData();
+            renderFavorites(); // Ensure favorites list is rendered
+       } else if (tabId === 'track') {
+            renderMyActivityFeed(); // Render mock activity feed
+            renderFavoritesActivityFeed(); // Render mock favorites activity feed
+       } else if (tabId === 'leaderboard') {
+           // Load leaderboard data if needed (mocked for now)
+           renderLeaderboard(); // Render mock leaderboard
+       }
+       // 'home' tab (Overview) data is loaded on wallet connect/startup
+    }
+
+
+    // --- Saved Addresses (Favorites) Logic ---
+    // Load saved addresses from localStorage
+    function loadFavorites() {
+        console.log('Loading favorites from localStorage...');
+        const favorites = JSON.parse(localStorage.getItem('favoriteAddresses') || '[]');
+        return favorites;
+    }
+
+    // Save addresses to localStorage
+    function saveFavorites(favorites) {
+        console.log('Saving favorites to localStorage...');
+        localStorage.setItem('favoriteAddresses', JSON.stringify(favorites));
+    }
+
+    // Render the list of saved addresses in the Profile section
+    function renderFavorites() {
+        console.log('Rendering favorites list...');
+        if (favoritesListContainer) {
+            const favorites = loadFavorites();
+            favoritesListContainer.innerHTML = ''; // Clear current list
+
+            if (favorites.length === 0) {
+                const t = translations[languageSelect.value] || translations['en'];
+                favoritesListContainer.innerHTML = `<p style="text-align: center; color: #aaa; font-size: 0.75rem;">${t.noSavedAddresses}</p>`;
+                return;
+            }
+
+            favorites.forEach(address => {
+                const favoriteItem = document.createElement('div');
+                favoriteItem.classList.add('favorite-item');
+                favoriteItem.innerHTML = `
+                    <span>${address}</span>
+                    <button data-address="${address}"><i class="fas fa-times-circle"></i></button>
+                `;
+                favoritesListContainer.appendChild(favoriteItem);
+            });
+
+            // Add event listeners to remove buttons
+            favoritesListContainer.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', handleRemoveFavorite);
+            });
+        }
+    }
+
+    // Handle adding a new favorite address
+    function handleAddFavorite() {
+        console.log('Attempting to add favorite...');
+        if (newFavoriteAddressInput) {
+            const address = newFavoriteAddressInput.value.trim();
+            const t = translations[languageSelect.value] || translations['en'];
+
+            if (address) {
+                // Basic validation (could add more robust address validation)
+                if (address.startsWith('0x') && address.length > 40) { // Simple check for Ethereum address format
+                    const favorites = loadFavorites();
+                    if (!favorites.includes(address)) {
+                        favorites.push(address);
+                        saveFavorites(favorites);
+                        renderFavorites(); // Re-render the list
+                        newFavoriteAddressInput.value = ''; // Clear input
+                         // Also update the favorites activity feed if on that tab
+                         if (document.getElementById('track').classList.contains('active')) {
+                             renderFavoritesActivityFeed(); // Re-render favorites activity
+                         }
+                        console.log(`Added favorite: ${address}`);
+                    } else {
+                        alert("Address is already in your favorites."); // Add translation later
+                        console.warn("Address already exists in favorites.");
+                    }
+                } else {
+                    alert("Invalid address format. Please enter a valid Ethereum address."); // Add translation later
+                    console.warn("Invalid address format entered.");
+                }
+            } else {
+                alert(t.enterAddress);
+                console.warn("No address entered.");
+            }
+        }
+    }
+
+    // Handle removing a favorite address
+    function handleRemoveFavorite(event) {
+        console.log('Attempting to remove favorite...');
+        const button = event.target.closest('button');
+        if (button) {
+            const addressToRemove = button.dataset.address;
+            let favorites = loadFavorites();
+            favorites = favorites.filter(address => address !== addressToRemove);
+            saveFavorites(favorites);
+            renderFavorites(); // Re-render the list
+             // Also update the favorites activity feed if on that tab
+             if (document.getElementById('track').classList.contains('active')) {
+                 renderFavoritesActivityFeed(); // Re-render favorites activity
+             }
+            console.log(`Removed favorite: ${addressToRemove}`);
+        }
+    }
+
+
+    // --- Settings Logic ---
+    // Handle language change
+    function handleLanguageChange(event) {
+        const newLang = event.target.value;
+        localStorage.setItem('language', newLang); // Save preference
+        updateLanguage(newLang); // Apply new language
+        console.log(`Language changed to: ${newLang}`);
+        // Re-render any content that uses translations directly in JS if necessary
+        renderFavorites(); // Re-render favorites list with updated language
+        renderMyActivityFeed(); // Re-render activity feeds
+        renderFavoritesActivityFeed();
+        renderLeaderboard(); // Re-render leaderboard
+    }
+
+    // Handle theme change
+    function handleThemeChange(event) {
+        const newTheme = event.target.value;
+        localStorage.setItem('theme', newTheme); // Save preference
+        document.body.setAttribute('data-theme', newTheme); // Apply new theme
+        // Update WalletConnect modal theme
+        if (typeof WalletConnectModal !== 'undefined' && WalletConnectModal.setThemeMode) {
+             WalletConnectModal.setThemeMode(newTheme); // Use newTheme here
+         }
+        console.log(`Theme changed to: ${newTheme}`);
+    }
+
+     // Handle Owlracle API key input change
+     function handleOwlracleApiKeyChange(event) {
+         const newApiKey = event.target.value.trim();
+         localStorage.setItem('owlracleApiKey', newApiKey); // Save key
+         owlracleApiKey = newApiKey; // Update global variable
+         console.log(`Owlracle API Key updated.`);
+         // Optionally trigger a gas price update immediately
+         getGas();
+     }
+
+
+    // --- Leaderboard (Mocked for now) ---
+    const mockLeaderboardData = [
+        { rank: 1, user: 'vitalik.eth', score: 15000 },
+        { rank: 2, user: 'satoshi.eth', score: 12000 },
+        { rank: 3, user: 'user123', score: 9500 },
+        { rank: 4, user: 'anon456', score: 8000 },
+        { rank: 5, user: 'crypto_king', score: 7500 },
+    ];
+
+    function renderLeaderboard() {
+        console.log('Rendering leaderboard...');
+        if (leaderboardListContainer) {
+            // --- TODO: Replace with real data fetched from backend/APIs ---
+            leaderboardListContainer.innerHTML = ''; // Clear current list
+
+            if (mockLeaderboardData.length === 0) {
+                 const t = translations[languageSelect.value] || translations['en'];
+                 leaderboardListContainer.innerHTML = `<p style="text-align: center; color: #aaa; font-size: 0.75rem;">${t.leaderboardDataNotAvailable}</p>`;
+                 return;
+            }
+
+            mockLeaderboardData.forEach(entry => {
+                const leaderboardItem = document.createElement('div');
+                leaderboardItem.classList.add('leaderboard-item');
+                leaderboardItem.innerHTML = `
+                    <span class="rank">#${entry.rank}</span>
+                    <span class="user">${entry.user}</span>
+                    <span class="score">${entry.score} WP</span>
+                `;
+                leaderboardListContainer.appendChild(leaderboardItem);
+            });
+        }
+    }
+
+
+    // --- Button & Interaction Logic (Mocked for now) ---
+
+    // Handle Buy WP button click
+    function handleBuyWP() {
+        console.log('Buy WP button clicked.');
+        const t = translations[languageSelect.value] || translations['en'];
+         // --- TODO: Implement real Buy WP logic (e.g., token purchase via smart contract) ---
+        alert(t.wpNotImplemented); // Mock action
+    }
+
+    // Handle Buy Premium button click
+    async function handleBuyPremium() {
+        console.log('Buy Premium button clicked.');
+        const t = translations[languageSelect.value] || translations['en'];
+        if (!userAddress) {
+             alert(t.connectWalletFirst);
+             return;
+        }
+        // --- TODO: Implement real Buy Premium logic (e.g., send ETH to a contract) ---
+        // This would involve using wagmi/viem to send a transaction
+        /*
+        if (signer) { // Check if signer is available (requires wallet connection)
+            try {
+                // Example transaction (replace with your actual contract interaction)
+                const tx = await signer.sendTransaction({
+                    to: '0xYourPremiumContractAddressHere', // Replace with your contract address
+                    value: ethers.utils.parseEther('0.009'), // Send 0.009 ETH
+                    // --- TODO: Get gas price dynamically using getGas() or wagmi/viem gas functions ---
+                    // gasPrice: (await getGas()).estimatedFee * 1e9, // Example using estimated fee in Gwei to Wei
+                     // Or using EIP-1559 fields if supported by the network/wallet
+                     // maxFeePerGas: (await getGas()).maxFeePerGas * 1e9,
+                     // maxPriorityFeePerGas: (await getGas()).maxPriorityFeePerGas * 1e9,
+                });
+                console.log('Premium purchase transaction sent:', tx.hash);
+                alert(t.premiumPurchased + tx.hash); // Notify user with transaction hash
+                // --- TODO: Add logic to track transaction confirmation and update UI/user status ---
+            } catch (error) {
+                console.error('Premium purchase failed:', error);
+                alert(t.premiumPurchaseFailed + error.message); // Notify user of error
+            }
+        } else {
+            alert(t.connectWalletFirst); // Should be caught by the !userAddress check, but good fallback
+        }
+        */
+        alert("Premium purchase function is not implemented yet."); // Mock action
+    }
+
+    // Handle Claim Daily Bonus button click
+    function handleClaimDaily() {
+        console.log('Claim Daily Bonus button clicked.');
+        const t = translations[languageSelect.value] || translations['en'];
+         // --- TODO: Implement real Claim Daily Bonus logic (e.g., interact with a smart contract) ---
+        alert(t.dailyBonusNotImplemented); // Mock action
+    }
+
+    // Handle Share Code button click
+    async function handleShareCode() {
+        console.log('Share Code button clicked.');
+        const inviteCode = document.querySelector('.invite-code').textContent;
+        const t = translations[languageSelect.value] || translations['en'];
+        // --- TODO: Implement real sharing logic (e.g., copy to clipboard, open social share dialog) ---
+        // Using Clipboard API to copy text
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+                await navigator.clipboard.writeText(inviteCode);
+                alert(t.inviteCodeCopied);
+                console.log('Invite code copied to clipboard.');
+            } catch (err) {
+                console.error('Failed to copy invite code:', err);
+                alert(`${t.couldNotCopy} ${inviteCode}`);
+            }
+        } else {
+            // Fallback for browsers that don't support Clipboard API
+            const textarea = document.createElement('textarea');
+            textarea.value = inviteCode;
+            textarea.style.position = 'fixed'; // Avoid scrolling to bottom
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                alert(t.inviteCodeCopied);
+                 console.log('Invite code copied using fallback method.');
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert(`${t.couldNotCopy} ${inviteCode}`);
+            }
+            document.body.removeChild(textarea);
+        }
+    }
+
+
+    // --- Initial Setup ---
+    // This function runs once the DOM is fully loaded and wagmi/viem are ready
+    function startAppInitialization() {
+        console.log('DOM fully loaded and wagmi/viem ready. Starting app initialization...');
+
+        // Initialize Wagmi (creates config and client, handles auto-connect and subscriptions)
+        initializeWagmi();
+
+        // Load settings (language, theme, API key)
+        loadSettings();
+
+        // Set up event listeners for footer tabs
+        document.querySelectorAll('.footer-tab').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.dataset.tab;
+                showTab(tabId);
+            });
+        });
+
+         // Set up event listeners for settings icons
+         // These listeners are now attached to both icons (disconnected and connected)
+         // The updateWalletUI function controls which one is visible and therefore clickable.
+         if (settingsIconDisconnected) {
+             settingsIconDisconnected.addEventListener('click', toggleSettings);
+         }
+          if (settingsIconConnected) {
+              settingsIconConnected.addEventListener('click', toggleSettings);
+          }
+
+
+        // Set up event listener for wallet connect button
+        if (connectWalletBtn) {
+            connectWalletBtn.addEventListener('click', connectWallet);
+        }
+
+         // Set up event listener for disconnect (if needed, could add a disconnect button in UI)
+         // Example: document.getElementById('disconnectButton').addEventListener('click', disconnectWallet);
+
+        // Set up event listeners for buttons in cards (mocked actions)
+        if (buyWPBtn) buyWPBtn.addEventListener('click', handleBuyWP);
+        if (buyPremiumBtn) buyPremiumBtn.addEventListener('click', handleBuyPremium);
+        if (claimDailyBtn) claimDailyBtn.addEventListener('click', handleClaimDaily);
+        if (shareBtn) shareBtn.addEventListener('click', handleShareCode);
+
+
+        // Set up event listener for adding favorite address
+        if (addFavoriteBtn) addFavoriteBtn.addEventListener('click', handleAddFavorite);
+         // Optional: Allow adding by pressing Enter in the input field
+         if (newFavoriteAddressInput) {
+             newFavoriteAddressInput.addEventListener('keypress', function(event) {
+                 if (event.key === 'Enter') {
+                     event.preventDefault(); // Prevent default form submission if it were a form
+                     handleAddFavorite();
+                 }
+             });
+         }
+
+
+        // Set up event listeners for settings changes
+        if (languageSelect) languageSelect.addEventListener('change', handleLanguageChange);
+        if (themeToggle) themeToggle.addEventListener('change', handleThemeChange);
+         if (owlracleApiKeyInput) owlracleApiKeyInput.addEventListener('input', handleOwlracleApiKeyChange); // Use 'input' event for real-time save
+
+
+        // Initial display setup
+        showTab('home'); // Show the home tab by default
+        getGas(); // Fetch initial gas price
+
+        // Load initial data that doesn't strictly require wallet connection (like saved favorites list)
+        renderFavorites(); // Render the saved addresses list on profile tab load
+        renderLeaderboard(); // Render mock leaderboard on leaderboard tab load
+
+         // Initial render of activity feeds (will show mock data until connected)
+         renderMyActivityFeed();
+         renderFavoritesActivityFeed();
+
+
+        console.log('App initialization complete.');
+    }
+
+    // --- Toggle Settings Section ---
+    function toggleSettings() {
+        console.log('Toggling settings visibility...');
+        if (settingsSection) {
+            // Check if the settings section is currently displayed
+            const isSettingsVisible = settingsSection.classList.contains('active');
+
+            // If settings is already active, hide it and show the previously active tab
+            if (isSettingsVisible) {
+                settingsSection.classList.remove('active');
+                // Find the currently active footer button and show its corresponding tab
+                const activeFooterButton = document.querySelector('.footer-tab.active');
+                if (activeFooterButton) {
+                    const previousTabId = activeFooterButton.dataset.tab;
+                    showTab(previousTabId); // Show the previous tab
+                } else {
+                    // Fallback: if no footer tab is active (shouldn't happen if app starts correctly), show home
+                    showTab('home');
+                }
+            } else {
+                // If settings is not active, hide all other tabs and show settings
+                document.querySelectorAll('.tab-content').forEach(section => {
+                    section.classList.remove('active');
+                });
+                settingsSection.classList.add('active');
+                // Ensure no footer tab is marked as active while settings is open (optional)
+                 document.querySelectorAll('.footer-tab').forEach(button => {
+                     button.classList.remove('active');
+                 });
+            }
+        }
+    }
+
+
+    // --- Wait for Wagmi and Viem to Load ---
+    // This function polls until wagmi and viem are available globally
+    // Added a timeout to prevent infinite loops
+    function waitForWagmiAndViem(callback, timeout = 20000) { // Increased timeout to 20 seconds
+        const startTime = Date.now();
+
+        function check() {
+            const wagmiLoaded = typeof wagmi !== 'undefined' && typeof wagmi.createClient === 'function';
+            const viemLoaded = typeof viem !== 'undefined' && typeof viem.createPublicClient === 'function';
+
+            if (wagmiLoaded && viemLoaded) {
+                console.log("✅ wagmi and viem loaded successfully.");
+                callback();
+            } else if (Date.now() - startTime > timeout) {
+                console.error("❌ Timeout waiting for wagmi and viem to load.");
+                if (!wagmiLoaded) console.error("   - wagmi not fully loaded.");
+                if (!viemLoaded) console.error("   - viem not fully loaded.");
+                // Add a specific message to the console if tab initialization fails due to timeout
+                 console.error("❌ Tab system initialization failed: Required libraries did not load within the timeout.");
+                // Optionally display an error message to the user
+                const t = translations[languageSelect.value] || translations['en'];
+                 alert("Failed to load necessary libraries. Please check your internet connection or try again later."); // Add translation later
+            }
+            else {
+                console.log("Waiting for wagmi and viem...");
+                setTimeout(check, 100); // Check again after 100ms
+            }
+        }
+        check();
+    }
+
+
+    // --- Start the app initialization after DOM is ready AND wagmi/viem are loaded ---
+    // Use DOMContentLoaded to ensure the HTML structure is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM fully loaded and parsed.');
+        // Then wait for wagmi and viem before starting the rest of the app
+        waitForWagmiAndViem(startAppInitialization);
+    });
+
+  </script>
+</body>
+</html>
