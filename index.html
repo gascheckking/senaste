@@ -1820,42 +1820,83 @@
     }
 
      // --- Initialize Wagmi ---
-// This function creates the wagmi config and client
 function initializeWagmi() {
-    // Explicit check for required global objects before proceeding
-    // Checking for a specific function like createClient makes the check more robust for wagmi v1.x
-    // Checking for createPublicClient for viem
-    if (
-        typeof wagmi === 'undefined' ||
-        typeof wagmi.createClient !== 'function' ||
-        typeof viem === 'undefined' ||
-        typeof viem.createPublicClient !== 'function'
-    ) {
-        console.error("Required wagmi/viem objects not fully loaded/ready. Cannot initialize.");
-        return;
-    }
+  if (
+    typeof wagmi === 'undefined' ||
+    typeof wagmi.createClient !== 'function' ||
+    typeof viem === 'undefined' ||
+    typeof viem.createPublicClient !== 'function'
+  ) {
+    console.error("Required wagmi/viem objects not fully loaded/ready. Cannot initialize.");
+    return;
+  }
 
-    console.log('Initializing Wagmi and Viem...');
-    // fortsätt här med din wagmi-setup...
-}
+  console.log('Initializing Wagmi and Viem...');
 
-// --- Väntar tills biblioteken är redo ---
-function waitForWagmiAndViem(retry = 0) {
-    if (
-        typeof wagmi !== 'undefined' &&
-        typeof wagmi.createClient === 'function' &&
-        typeof viem !== 'undefined' &&
-        typeof viem.createPublicClient === 'function'
-    ) {
-        initializeWagmi();
-    } else if (retry < 10) {
-        setTimeout(() => waitForWagmiAndViem(retry + 1), 300);
+  const base = wagmi.chains?.base ?? {
+    id: 8453,
+    name: 'Base',
+    network: 'base',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: ['https://mainnet.base.org'] }, public: { http: ['https://mainnet.base.org'] } },
+    blockExplorers: { default: { name: 'Basescan', url: 'https://basescan.org' } },
+    contracts: {
+      multicall3: {
+        address: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        blockCreated: 8440150,
+      },
+    },
+  };
+
+  const walletConnectConnector = typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.WalletConnectConnector({
+    chains: [base],
+    options: {
+      projectId: WALLETCONNECT_PROJECT_ID,
+      showQrModal: true,
+    },
+  }) : null;
+
+  config = wagmi.createClient({
+    autoConnect: true,
+    connectors: [
+      walletConnectConnector,
+      typeof wagmi.connectors !== 'undefined' ? new wagmi.connectors.InjectedConnector({ chains: [base] }) : null,
+    ].filter(Boolean),
+    provider: ({ chainId }) =>
+      viem.createPublicClient({
+        chain: base,
+        transport: viem.http(),
+      }),
+  });
+
+  if (!config) {
+    console.error("Failed to create wagmi config.");
+    return;
+  }
+
+  client = config;
+
+  config.subscribe((state) => {
+    console.log('Wagmi state changed:', state);
+    const isConnected = state.status === 'connected';
+    const currentAddress = state.data?.account;
+    const currentChainId = state.data?.chain?.id;
+    userAddress = currentAddress;
+
+    updateWalletUI(isConnected);
+
+    if (isConnected) {
+      loadOnchainData(userAddress);
+      if (currentChainId !== base.id) {
+        const t = translations[languageSelect.value] || translations['en'];
+        alert(`${t.switchNetworkAlert || 'Please switch to the Base network (Chain ID 8453). You are currently on Chain ID'} ${currentChainId}.`);
+      }
     } else {
-        console.error("Libraries never loaded.");
+      loadOnchainData(null);
     }
+  });
 }
 
-waitForWagmiAndViem();
 
 
          // Use wagmi.createClient from the new CDN link (wagmi v1.x)
