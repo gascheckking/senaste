@@ -1737,7 +1737,6 @@ const shareBtn = document.querySelector('.invite-card .share-btn');
 let walletConnectConnector = null;
 let config = null;
 let client = null;
-let userAddress = null;
 const WALLETCONNECT_PROJECT_ID = 'c0aa1ca206eb7d58226102b102ec49e9';
 
 // Kedjedefinition (Base)
@@ -1761,6 +1760,7 @@ const base = typeof wagmi !== 'undefined' && typeof wagmi.chains !== 'undefined'
     },
   },
 };
+
 
 function initializeWagmi() {
   if (
