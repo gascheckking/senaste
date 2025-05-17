@@ -1820,17 +1820,43 @@
     }
 
      // --- Initialize Wagmi ---
-     // This function creates the wagmi config and client
-     function initializeWagmi() {
-         // Explicit check for required global objects before proceeding
-         // Checking for a specific function like createClient makes the check more robust for wagmi v1.x
-         // Checking for createPublicClient for viem
-         if (typeof wagmi === 'undefined' || typeof wagmi.createClient !== 'function' || typeof viem === 'undefined' || typeof viem.createPublicClient !== 'function') {
-             console.error("Required wagmi/viem objects not fully loaded/ready. Cannot initialize.");
-             // This scenario should ideally be caught by waitForWagmiAndViem, but is a good safety check.
-             return;
-         }
-         console.log('Initializing Wagmi and Viem...');
+// This function creates the wagmi config and client
+function initializeWagmi() {
+    // Explicit check for required global objects before proceeding
+    // Checking for a specific function like createClient makes the check more robust for wagmi v1.x
+    // Checking for createPublicClient for viem
+    if (
+        typeof wagmi === 'undefined' ||
+        typeof wagmi.createClient !== 'function' ||
+        typeof viem === 'undefined' ||
+        typeof viem.createPublicClient !== 'function'
+    ) {
+        console.error("Required wagmi/viem objects not fully loaded/ready. Cannot initialize.");
+        return;
+    }
+
+    console.log('Initializing Wagmi and Viem...');
+    // fortsätt här med din wagmi-setup...
+}
+
+// --- Väntar tills biblioteken är redo ---
+function waitForWagmiAndViem(retry = 0) {
+    if (
+        typeof wagmi !== 'undefined' &&
+        typeof wagmi.createClient === 'function' &&
+        typeof viem !== 'undefined' &&
+        typeof viem.createPublicClient === 'function'
+    ) {
+        initializeWagmi();
+    } else if (retry < 10) {
+        setTimeout(() => waitForWagmiAndViem(retry + 1), 300);
+    } else {
+        console.error("Libraries never loaded.");
+    }
+}
+
+waitForWagmiAndViem();
+
 
          // Use wagmi.createClient from the new CDN link (wagmi v1.x)
          config = wagmi.createClient({
