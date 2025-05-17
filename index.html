@@ -1763,39 +1763,37 @@
 
 
     // --- Wallet Connection Logic (using Wagmi) ---
-    async function connectWallet() {
-      if (WALLETCONNECT_PROJECT_ID === 'YOUR_WALLETCONNECT_PROJECT_ID') {
-          alert("Please set your WalletConnect Project ID in the code.");
-          console.error("WalletConnect Project ID is not set.");
-          return;
-      }
-      // Ensure wagmi config is created and connector is available before connecting
-      if (!config || !walletConnectConnector) {
-          console.error("Wagmi config or connector not initialized.");
-          alert("Failed to initialize wallet connection. Please try refreshing.");
-          return;
-      }
-      try {
-        console.log('Attempting WalletConnect connection with Wagmi...');
-        // Use wagmi's connect function with the WalletConnect connector
-        // This will trigger the WalletConnect modal if showQrModal is true in options
-        const { connector } = await config.connect({ connector: walletConnectConnector });
+    // --- Wallet Connection Logic (using Wagmi) ---
+async function connectWallet() {
+  if (WALLETCONNECT_PROJECT_ID === 'YOUR_WALLETCONNECT_PROJECT_ID') {
+    alert("Please set your WalletConnect Project ID in the code.");
+    console.error("WalletConnect Project ID is not set.");
+    return;
+  }
 
-        // The subscribe function below will handle state changes after connection
-        // No need for manual modalProvider listeners here when using wagmi's subscribe
+  if (!config || !walletConnectConnector) {
+    console.error("Wagmi config or connector not initialized.");
+    alert("Failed to initialize wallet connection. Please try refreshing.");
+    return;
+  }
 
-      } catch (error) {
-        console.error('Wallet Connection Error:', error);
-        // Provide user feedback based on error
-        const t = translations[languageSelect.value] || translations['en'];
-        if (error.message.includes('User rejected request')) {
-             alert(t.walletRejected);
-        } else {
-             alert(t.walletConnectError + error.message);
-        }
-        // updateWalletUI(false); // Wagmi subscription will handle UI update
-      }
+  try {
+    console.log("🔌 Attempting WalletConnect connection...");
+    const { connector } = await config.connect({ connector: walletConnectConnector });
+
+    const state = config.getState?.();
+    console.log("✅ Connected! Wallet address:", state?.data?.account);
+    console.log("🔗 Full client state:", state);
+  } catch (error) {
+    console.error("Wallet Connection Error:", error);
+    const t = translations[languageSelect.value] || translations['en'];
+    if (error.message.includes('User rejected request')) {
+      alert(t.walletRejected);
+    } else {
+      alert(t.walletConnectError + error.message);
     }
+  }
+}
 
     // --- Disconnect Wallet (using Wagmi) ---
     async function disconnectWallet() {
